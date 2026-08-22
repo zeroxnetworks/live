@@ -1,0 +1,6 @@
+{
+  "name": "Zerox Network",
+  "description": "A premium virtual phone number, SMS bypass, and digital services platform with integrated affiliate partner program, automated 2% fee withdrawal requests, admin payout verification, and instant tax invoice generation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

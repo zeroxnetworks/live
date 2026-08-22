@@ -1,0 +1,139 @@
+@import "tailwindcss";
+
+html.dark {
+  filter: invert(1) hue-rotate(180deg);
+  background: #fff; /* Ensure it has a white bg before inversion */
+}
+
+/* Re-invert images, svgs (if needed), and videos so they look normal */
+html.dark img, 
+html.dark video,
+html.dark .no-invert {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Print CSS override for PDF generation and clean printing */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  
+  body * {
+    visibility: hidden !important;
+  }
+
+  #zerox-executive-pdf-report,
+  #zerox-executive-pdf-report * {
+    visibility: visible !important;
+  }
+
+  #zerox-executive-pdf-report {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+}
+
+/* Hide Google Translate Toolbar */
+.skiptranslate {
+  display: none !important;
+}
+body {
+  top: 0px !important;
+}
+
+/* Neon Light Glowing and Moving Arrow Animations for Auto-Minimize & Collapsible Sections */
+@keyframes neonPulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(0, 174, 239, 0.8)) drop-shadow(0 0 6px rgba(0, 174, 239, 0.5));
+    opacity: 0.85;
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 6px rgba(0, 174, 239, 1)) drop-shadow(0 0 12px rgba(0, 174, 239, 0.8));
+    opacity: 1;
+    transform: translateY(3px) scale(1.18);
+  }
+}
+
+@keyframes neonPulseHorizontal {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(0, 174, 239, 0.8)) drop-shadow(0 0 6px rgba(0, 174, 239, 0.5));
+    opacity: 0.85;
+    transform: translateX(0px) scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 6px rgba(0, 174, 239, 1)) drop-shadow(0 0 12px rgba(0, 174, 239, 0.8));
+    opacity: 1;
+    transform: translateX(4px) scale(1.18);
+  }
+}
+
+.neon-arrow-bounce {
+  animation: neonPulse 1.4s infinite ease-in-out;
+  color: #00AEEF !important;
+}
+
+.neon-arrow-horizontal {
+  animation: neonPulseHorizontal 1.4s infinite ease-in-out;
+  color: #00AEEF !important;
+}
+
+/* Continuous Announcements Marquee Ticker */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-33.333333%);
+  }
+}
+
+.animate-marquee {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee 35s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Modern subtle scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.8);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 174, 239, 0.6);
+}
+

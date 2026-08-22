@@ -1,0 +1,112 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Public and private user profile data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "username": { "type": "string", "maxLength": 50 },
+        "usernameLower": { "type": "string", "maxLength": 50 },
+        "fullName": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "format": "email" },
+        "emailLower": { "type": "string", "format": "email" },
+        "balance": { "type": "number", "description": "Wallet balance in PKR" },
+        "role": { "type": "string", "enum": ["user", "admin", "moderator"] },
+        "status": { "type": "string", "enum": ["active", "banned"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "SmmProvider": {
+      "title": "SMM Provider",
+      "description": "API Provider configuration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "apiUrl": { "type": "string", "format": "uri" },
+        "apiKey": { "type": "string" },
+        "apiType": { "type": "string" },
+        "currency": { "type": "string", "enum": ["USD", "PKR"] },
+        "status": { "type": "string", "enum": ["ACTIVE", "DISABLED"] },
+        "balance": { "type": "number" },
+        "healthStatus": { "type": "string", "enum": ["HEALTHY", "DEGRADED", "DOWN"] },
+        "lastSyncTime": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "apiUrl", "apiKey"]
+    },
+    "SmmService": {
+      "title": "SMM Service",
+      "description": "Individual SMM service item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "providerId": { "type": "string" },
+        "providerServiceId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 255 },
+        "category": { "type": "string", "maxLength": 100 },
+        "rate": { "type": "number" },
+        "sellingPrice": { "type": "number" },
+        "min": { "type": "integer" },
+        "max": { "type": "integer" },
+        "isActive": { "type": "boolean" },
+        "isHidden": { "type": "boolean" }
+      },
+      "required": ["id", "providerId", "name", "category", "sellingPrice"]
+    },
+    "SmmOrder": {
+      "title": "SMM Order",
+      "description": "Order placed by a user for SMM services",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "link": { "type": "string" },
+        "quantity": { "type": "integer" },
+        "charge": { "type": "number" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "serviceId", "link", "quantity", "charge"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Admin user UID mapping",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["uid"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile collection"
+    },
+    "/smm_providers/{providerId}": {
+      "schema": "SmmProvider",
+      "description": "SMM API providers"
+    },
+    "/smm_services/{serviceId}": {
+      "schema": "SmmService",
+      "description": "SMM service catalog"
+    },
+    "/smm_categories/{categoryId}": {
+      "schema": { "type": "object", "properties": { "name": { "type": "string" } } },
+      "description": "SMM service categories"
+    },
+    "/smm_orders/{orderId}": {
+      "schema": "SmmOrder",
+      "description": "SMM orders"
+    },
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "Collection of admin UIDs"
+    }
+  }
+}
