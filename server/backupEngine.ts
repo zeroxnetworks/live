@@ -2,8 +2,8 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import AdmZip from "adm-zip";
-import { adminDb, admin } from "./firebaseAdmin.js";
-import { triggerWhatsAppNotification } from "./whatsappNotificationEngine.js";
+import { adminDb, admin } from "./firebaseAdmin";
+import { triggerWhatsAppNotification } from "./whatsappNotificationEngine";
 
 const BACKUP_DIR = path.join(process.cwd(), "backups");
 const AUTH_DIR = path.join(process.cwd(), "whatsapp_auth");

@@ -1082,7 +1082,7 @@ CRITICAL RULES & BOUNDARIES:
   app.post("/api/deposit/pending-review-email", async (req, res) => {
     try {
       const { userEmail, userName, userId, amount, method, txId, depositId, createdAt } = req.body;
-      const { sendEmailAlert } = await import("./server/emailAlertEngine.js");
+      const { sendEmailAlert } = await import("./server/emailAlertEngine");
 
       
       // Admin Email
@@ -4196,7 +4196,7 @@ app.post("/api/email/:action", async (req, res) => {
 
   app.post("/api/imap/poll", async (req, res) => {
     try {
-      const { processImapPaymentsFull } = await import("./server/paymentEngine.js");
+      const { processImapPaymentsFull } = await import("./server/paymentEngine");
       const result = await processImapPaymentsFull(req.body);
       if (result.success === false) {
         return res.status(500).json({
@@ -4761,6 +4761,19 @@ app.post("/api/email/:action", async (req, res) => {
     } catch (err: any) {
       console.error("[SMM Proxy Error]:", err);
       return res.status(500).json({ error: err.message || "Internal server error" });
+    }
+  });
+
+  // SMM Full Synchronization Endpoint (Syncs providers, updates services/categories, and sends admin report email)
+  app.post("/api/smm/sync-all", async (req, res) => {
+    try {
+      const { sendEmail = true } = req.body || {};
+      const { syncAllSmmServices } = await import("./server/smmSyncEngine");
+      const result = await syncAllSmmServices({ sendAdminEmail: Boolean(sendEmail) });
+      return res.json(result);
+    } catch (err: any) {
+      console.error("[SMM Sync All Error]:", err);
+      return res.status(500).json({ error: err.message || "Failed to sync SMM services" });
     }
   });
 
@@ -5657,7 +5670,7 @@ setInterval(async () => {
       
     if (queue.empty) return;
     
-    const { sendEmailAlert } = await import("./server/emailAlertEngine.js");
+    const { sendEmailAlert } = await import("./server/emailAlertEngine");
     
     for (const doc of queue.docs) {
       const data = doc.data();

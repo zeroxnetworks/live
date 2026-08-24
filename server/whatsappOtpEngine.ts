@@ -1,6 +1,6 @@
 import crypto from "crypto";
-import { sendWhatsAppMessage } from "./whatsappEngine.js";
-import { adminDb } from "./firebaseAdmin.js";
+import { sendWhatsAppMessage } from "./whatsappEngine";
+import { adminDb } from "./firebaseAdmin";
 
 export type OtpType = "REGISTRATION" | "RECOVERY" | "ADMIN_2FA";
 

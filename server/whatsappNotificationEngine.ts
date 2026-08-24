@@ -1,5 +1,5 @@
-import { sendWhatsAppMessage, formatWhatsAppJid } from "./whatsappEngine.js";
-import { adminDb } from "./firebaseAdmin.js";
+import { sendWhatsAppMessage, formatWhatsAppJid } from "./whatsappEngine";
+import { adminDb } from "./firebaseAdmin";
 
 export type NotificationModule =
   | "USER_REGISTRATION"
