@@ -190,7 +190,14 @@ export function buildWhatsAppMessage(payload: {
 
   msg += `🕒 *Time:* ${timeStr}\n`;
   msg += `───────────────────────\n`;
-  msg += `🌐 *Portal:* zeroxnetwork.ai.studio\n`;
+  const portalHost = (() => {
+    try {
+      return process.env.APP_URL ? new URL(process.env.APP_URL).hostname : "zeroxnetwork.com";
+    } catch (e) {
+      return "zeroxnetwork.com";
+    }
+  })();
+  msg += `🌐 *Portal:* ${portalHost}\n`;
   msg += `⚡ _Official Automated Notification_`;
 
   return msg;

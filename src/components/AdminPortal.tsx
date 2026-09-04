@@ -499,7 +499,8 @@ export default function AdminPortal({
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        if (user.email === 'pandapals.manager@gmail.com') {
+        const uEmail = (user.email || "").toLowerCase();
+        if (uEmail === 'zeroxnetworks@gmail.com' || uEmail === 'pandapals.manager@gmail.com' || uEmail === 'info.rayanmirza@gmail.com') {
           setIsFirebaseAdmin(true);
         } else {
           try {
@@ -527,11 +528,15 @@ export default function AdminPortal({
     provider.setCustomParameters({ prompt: 'select_account' });
     try {
       const result = await signInWithPopup(auth, provider);
-      const userEmail = result.user.email || 'pandapals.manager@gmail.com';
-      if (userEmail === 'pandapals.manager@gmail.com') {
+      const userEmail = (result.user.email || '').toLowerCase().trim();
+      if (userEmail === 'zeroxnetworks@gmail.com') {
         setIsFirebaseAdmin(true);
-        setPendingAdminAccount({ username: result.user.displayName || "Manager Admin", email: userEmail, role: "Super Admin" });
-        await sendAdminLoginOtp(userEmail, result.user.displayName || "Manager Admin");
+        setPendingAdminAccount({ username: result.user.displayName || "Supreme Super Admin", email: userEmail, role: "Supreme Super Admin" });
+        await sendAdminLoginOtp(userEmail, result.user.displayName || "Supreme Super Admin");
+      } else if (userEmail === 'pandapals.manager@gmail.com' || userEmail === 'info.rayanmirza@gmail.com') {
+        setIsFirebaseAdmin(true);
+        setPendingAdminAccount({ username: result.user.displayName || "Super Admin", email: userEmail, role: "Super Admin" });
+        await sendAdminLoginOtp(userEmail, result.user.displayName || "Super Admin");
       } else {
         const adminDoc = await getDoc(doc(db, "admins", result.user.uid));
         if (adminDoc.exists()) {
@@ -1451,6 +1456,7 @@ export default function AdminPortal({
     // Check master or appointed admin credentials
     const cleanUser = username.trim().toLowerCase();
     const isMasterUser = (username.trim() === "Zerox" && (password === "i7mughal" || password === "Zulfi@#3344")) || 
+                         (cleanUser === "zeroxnetworks@gmail.com" && (password === "i7mughal" || password === "Zulfi@#3344")) ||
                          (cleanUser === "info.rayanmirza@gmail.com" && (password === "i7mughal" || password === "Zulfi@#3344")) ||
                          (cleanUser === "pandapals.manager@gmail.com" && (password === "i7mughal" || password === "Zulfi@#3344"));
     
@@ -1461,10 +1467,11 @@ export default function AdminPortal({
 
     if (isMasterUser || appointedMatch) {
       const adminEmail = isMasterUser 
-        ? (cleanUser.includes("rynmirza") ? "info.rayanmirza@gmail.com" : (cleanUser === "zerox" ? "info.rayanmirza@gmail.com" : "pandapals.manager@gmail.com"))
+        ? (cleanUser === "zeroxnetworks@gmail.com" ? "zeroxnetworks@gmail.com" : cleanUser.includes("rynmirza") ? "info.rayanmirza@gmail.com" : (cleanUser === "zerox" ? "zeroxnetworks@gmail.com" : "pandapals.manager@gmail.com"))
         : appointedMatch!.email;
-      const adminName = isMasterUser ? "Zerox Primary Super Admin" : appointedMatch!.username;
-      const adminRole: AdminRoleType = isMasterUser ? "Super Admin" : appointedMatch!.role;
+      const isSupreme = adminEmail.toLowerCase() === "zeroxnetworks@gmail.com";
+      const adminName = isSupreme ? "Zerox Primary Supreme Super Admin" : isMasterUser ? "Zerox Primary Super Admin" : appointedMatch!.username;
+      const adminRole: AdminRoleType = isSupreme ? "Supreme Super Admin" : isMasterUser ? "Super Admin" : appointedMatch!.role;
 
       setPendingAdminAccount({ username: adminName, email: adminEmail, role: adminRole });
 
@@ -2784,78 +2791,95 @@ export default function AdminPortal({
                     <div className="space-y-3">
                       <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Account Actions</h4>
                       <div className="space-y-2">
-                        {selectedManageUser.status === "Blocked" ? (
-                          <button 
-                            onClick={async () => {
-                              await updateDoc(doc(db, "users", selectedManageUser.id), { status: "Active" });
-                              setSelectedManageUser({...selectedManageUser, status: "Active"});
-                              sendNotification(
-                                selectedManageUser.id,
-                                selectedManageUser.email,
-                                selectedManageUser.username,
-                                "Account Unblocked",
-                                "Your account block has been removed by Admin."
-                              );
-                              toast.success("User account unblocked");
-                            }} 
-                            className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-between cursor-pointer border border-emerald-200 transition"
-                          >
-                            Unblock Account <CheckCircle2 className="h-4 w-4" />
-                          </button>
-                        ) : (
-                          <button 
-                            onClick={async () => {
-                              await updateDoc(doc(db, "users", selectedManageUser.id), { status: "Blocked" });
-                              setSelectedManageUser({...selectedManageUser, status: "Blocked"});
-                              sendNotification(
-                                selectedManageUser.id,
-                                selectedManageUser.email,
-                                selectedManageUser.username,
-                                "Account Blocked",
-                                "Your account has been blocked by Admin."
-                              );
-                              toast.success("User account blocked");
-                            }} 
-                            className="w-full bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-between cursor-pointer border border-red-200 transition"
-                          >
-                            Block Account <XCircle className="h-4 w-4" />
-                          </button>
-                        )}
+                        {(() => {
+                          const isTargetSuper = selectedManageUser.email?.toLowerCase() === "zeroxnetworks@gmail.com" || 
+                                               selectedManageUser.email?.toLowerCase() === "pandapals.manager@gmail.com" || 
+                                               selectedManageUser.email?.toLowerCase() === "info.rayanmirza@gmail.com";
+                          if (isTargetSuper) {
+                            return (
+                              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 font-bold flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                                <span>This is a Protected Root/Super Admin account. Account modifications & deletion are disabled.</span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <>
+                              {selectedManageUser.status === "Blocked" ? (
+                                <button 
+                                  onClick={async () => {
+                                    await updateDoc(doc(db, "users", selectedManageUser.id), { status: "Active" });
+                                    setSelectedManageUser({...selectedManageUser, status: "Active"});
+                                    sendNotification(
+                                      selectedManageUser.id,
+                                      selectedManageUser.email,
+                                      selectedManageUser.username,
+                                      "Account Unblocked",
+                                      "Your account block has been removed by Admin."
+                                    );
+                                    toast.success("User account unblocked");
+                                  }} 
+                                  className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-between cursor-pointer border border-emerald-200 transition"
+                                >
+                                  Unblock Account <CheckCircle2 className="h-4 w-4" />
+                                </button>
+                              ) : (
+                                <button 
+                                  onClick={async () => {
+                                    await updateDoc(doc(db, "users", selectedManageUser.id), { status: "Blocked" });
+                                    setSelectedManageUser({...selectedManageUser, status: "Blocked"});
+                                    sendNotification(
+                                      selectedManageUser.id,
+                                      selectedManageUser.email,
+                                      selectedManageUser.username,
+                                      "Account Blocked",
+                                      "Your account has been blocked by Admin."
+                                    );
+                                    toast.success("User account blocked");
+                                  }} 
+                                  className="w-full bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-between cursor-pointer border border-red-200 transition"
+                                >
+                                  Block Account <XCircle className="h-4 w-4" />
+                                </button>
+                              )}
 
-                        <button 
-                          onClick={async () => {
-                            try {
-                              await sendPasswordResetEmail(auth, selectedManageUser.email);
-                              sendNotification(
-                                selectedManageUser.id,
-                                selectedManageUser.email,
-                                selectedManageUser.username,
-                                "Password Reset",
-                                "A password reset link was sent to your email address."
-                              );
-                              toast.success("Password reset email sent to user!");
-                            } catch (e: any) {
-                              toast.error(e?.message || "Failed to send password reset email.");
-                            }
-                          }} 
-                          className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-between cursor-pointer transition shadow-sm"
-                        >
-                          Send Password Reset <Mail className="h-4 w-4" />
-                        </button>
+                              <button 
+                                onClick={async () => {
+                                  try {
+                                    await sendPasswordResetEmail(auth, selectedManageUser.email);
+                                    sendNotification(
+                                      selectedManageUser.id,
+                                      selectedManageUser.email,
+                                      selectedManageUser.username,
+                                      "Password Reset",
+                                      "A password reset link was sent to your email address."
+                                    );
+                                    toast.success("Password reset email sent to user!");
+                                  } catch (e: any) {
+                                    toast.error(e?.message || "Failed to send password reset email.");
+                                  }
+                                }} 
+                                className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-between cursor-pointer transition shadow-sm"
+                              >
+                                Send Password Reset <Mail className="h-4 w-4" />
+                              </button>
 
-                        <button 
-                          onClick={async () => {
-                            if (window.confirm(`Are you sure you want to permanently delete account @${selectedManageUser.username}? This action cannot be undone.`)) {
-                              await deleteDoc(doc(db, "users", selectedManageUser.id));
-                              setSelectedManageUser(null);
-                              setActiveUserLogView(null);
-                              toast.success(`User @${selectedManageUser.username} deleted`);
-                            }
-                          }} 
-                          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-between cursor-pointer transition shadow-sm"
-                        >
-                          Delete Account <Trash2 className="h-4 w-4" />
-                        </button>
+                              <button 
+                                onClick={async () => {
+                                  if (window.confirm(`Are you sure you want to permanently delete account @${selectedManageUser.username}? This action cannot be undone.`)) {
+                                    await deleteDoc(doc(db, "users", selectedManageUser.id));
+                                    setSelectedManageUser(null);
+                                    setActiveUserLogView(null);
+                                    toast.success(`User @${selectedManageUser.username} deleted`);
+                                  }
+                                }} 
+                                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-between cursor-pointer transition shadow-sm"
+                              >
+                                Delete Account <Trash2 className="h-4 w-4" />
+                              </button>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -3004,51 +3028,59 @@ export default function AdminPortal({
                           </div>
                         </div>
 
-                        <div className="space-y-1.5 md:col-span-2">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Ban User Account</label>
-                          <div className="flex gap-2">
-                            <input 
-                              type="text" 
-                              value={manageBanReason} 
-                              onChange={e => setManageBanReason(e.target.value)} 
-                              placeholder="Reason for temporary ban..." 
-                              className="flex-1 bg-rose-50 border border-rose-200 rounded-lg px-3 py-1.5 text-xs text-rose-800 focus:outline-none focus:border-rose-500 placeholder:text-rose-300" 
-                            />
-                            <button 
-                              onClick={async () => {
-                                if (!manageBanReason.trim() && !selectedManageUser.isBanned) {
-                                  toast.error("Please provide a reason to ban");
-                                  return;
-                                }
-                                const willBan = !selectedManageUser.isBanned;
-                                await updateDoc(doc(db, "users", selectedManageUser.id), { 
-                                  isBanned: willBan,
-                                  banReason: willBan ? manageBanReason : null,
-                                  status: willBan ? "Banned" : "Active"
-                                });
-                                setSelectedManageUser({...selectedManageUser, isBanned: willBan, banReason: willBan ? manageBanReason : "", status: willBan ? "Banned" : "Active"});
-                                sendNotification(selectedManageUser.id, selectedManageUser.email, selectedManageUser.username, willBan ? "Account Banned" : "Account Unbanned", willBan ? manageBanReason : "Ban lifted");
-                                
-                                // Send Email Alert
-                                fetch("/api/email/account-status", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({
-                                    toEmail: selectedManageUser.email,
-                                    username: selectedManageUser.username,
-                                    status: willBan ? "Banned" : "Active",
-                                    reason: willBan ? manageBanReason : "Ban lifted"
-                                  })
-                                }).catch(err => console.error("Ban email failed", err));
+                        {(() => {
+                          const isTargetSuper = selectedManageUser.email?.toLowerCase() === "zeroxnetworks@gmail.com" || 
+                                               selectedManageUser.email?.toLowerCase() === "pandapals.manager@gmail.com" || 
+                                               selectedManageUser.email?.toLowerCase() === "info.rayanmirza@gmail.com";
+                          if (isTargetSuper) return null;
+                          return (
+                            <div className="space-y-1.5 md:col-span-2">
+                              <label className="text-[10px] font-bold text-slate-500 uppercase">Ban User Account</label>
+                              <div className="flex gap-2">
+                                <input 
+                                  type="text" 
+                                  value={manageBanReason} 
+                                  onChange={e => setManageBanReason(e.target.value)} 
+                                  placeholder="Reason for temporary ban..." 
+                                  className="flex-1 bg-rose-50 border border-rose-200 rounded-lg px-3 py-1.5 text-xs text-rose-800 focus:outline-none focus:border-rose-500 placeholder:text-rose-300" 
+                                />
+                                <button 
+                                  onClick={async () => {
+                                    if (!manageBanReason.trim() && !selectedManageUser.isBanned) {
+                                      toast.error("Please provide a reason to ban");
+                                      return;
+                                    }
+                                    const willBan = !selectedManageUser.isBanned;
+                                    await updateDoc(doc(db, "users", selectedManageUser.id), { 
+                                      isBanned: willBan,
+                                      banReason: willBan ? manageBanReason : null,
+                                      status: willBan ? "Banned" : "Active"
+                                    });
+                                    setSelectedManageUser({...selectedManageUser, isBanned: willBan, banReason: willBan ? manageBanReason : "", status: willBan ? "Banned" : "Active"});
+                                    sendNotification(selectedManageUser.id, selectedManageUser.email, selectedManageUser.username, willBan ? "Account Banned" : "Account Unbanned", willBan ? manageBanReason : "Ban lifted");
+                                    
+                                    // Send Email Alert
+                                    fetch("/api/email/account-status", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({
+                                        toEmail: selectedManageUser.email,
+                                        username: selectedManageUser.username,
+                                        status: willBan ? "Banned" : "Active",
+                                        reason: willBan ? manageBanReason : "Ban lifted"
+                                      })
+                                    }).catch(err => console.error("Ban email failed", err));
 
-                                toast.success(willBan ? "User account banned" : "User ban lifted");
-                              }} 
-                              className={`text-white font-bold px-4 py-1.5 rounded-lg text-xs cursor-pointer shadow-sm transition ${selectedManageUser.isBanned ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}`}
-                            >
-                              {selectedManageUser.isBanned ? 'Lift Ban' : 'Ban User'}
-                            </button>
-                          </div>
-                        </div>
+                                    toast.success(willBan ? "User account banned" : "User ban lifted");
+                                  }} 
+                                  className={`text-white font-bold px-4 py-1.5 rounded-lg text-xs cursor-pointer shadow-sm transition ${selectedManageUser.isBanned ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}`}
+                                >
+                                  {selectedManageUser.isBanned ? 'Lift Ban' : 'Ban User'}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                       </div>
                     </div>

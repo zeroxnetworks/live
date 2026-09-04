@@ -85,6 +85,8 @@ export interface UserAccount {
   banReason?: string;
   dailyLimit?: number;
   isVerified?: boolean;
+  role?: AdminRoleType | string;
+  isSupremeAdmin?: boolean;
 }
 
 export interface DepositRequest {
@@ -379,7 +381,7 @@ export interface PrivacyPolicyData {
   sections: PrivacyPolicySection[];
 }
 
-export type AdminRoleType = "Super Admin" | "Financial Admin" | "Support Agent" | "Content Manager";
+export type AdminRoleType = "SUPREME_SUPER_ADMIN" | "Supreme Super Admin" | "Super Admin" | "Financial Admin" | "Support Agent" | "Content Manager";
 
 export interface AppointedAdminPermissions {
   canManageUsers?: boolean;

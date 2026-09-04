@@ -47,13 +47,23 @@ if (typeof window !== 'undefined') {
   };
 }
 
+const getEnv = (key: string, fallback = ""): string => {
+  if (typeof import.meta !== "undefined" && (import.meta as any).env && (import.meta as any).env[key]) {
+    return (import.meta as any).env[key];
+  }
+  if (typeof process !== "undefined" && process.env && process.env[key]) {
+    return process.env[key] || "";
+  }
+  return fallback;
+};
+
 const firebaseConfig = {
-  apiKey: "AIzaSyBGetpMpLcDTtmfq8N3VQCW0FVGeoYjSw4",
-  authDomain: "charismatic-analog-ft3g1.firebaseapp.com",
-  projectId: "charismatic-analog-ft3g1",
-  storageBucket: "charismatic-analog-ft3g1.firebasestorage.app",
-  messagingSenderId: "855390875983",
-  appId: "1:855390875983:web:99a33159cae58fb6b7553a"
+  apiKey: getEnv("VITE_FIREBASE_API_KEY", "AIzaSyBGetpMpLcDTtmfq8N3VQCW0FVGeoYjSw4"),
+  authDomain: getEnv("VITE_FIREBASE_AUTH_DOMAIN", "charismatic-analog-ft3g1.firebaseapp.com"),
+  projectId: getEnv("VITE_FIREBASE_PROJECT_ID", "charismatic-analog-ft3g1"),
+  storageBucket: getEnv("VITE_FIREBASE_STORAGE_BUCKET", "charismatic-analog-ft3g1.firebasestorage.app"),
+  messagingSenderId: getEnv("VITE_FIREBASE_MESSAGING_SENDER_ID", "855390875983"),
+  appId: getEnv("VITE_FIREBASE_APP_ID", "1:855390875983:web:99a33159cae58fb6b7553a")
 };
 
 const app = initializeApp(firebaseConfig);
@@ -68,12 +78,21 @@ try {
   isLocalStorageAvailable = false;
 }
 
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  localCache: isLocalStorageAvailable 
-    ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-    : memoryLocalCache()
-}, "ai-studio-zeroxnetwork-ef98149d-4e69-427d-aa5b-cc5a95b1634b");
+const firestoreDbId = getEnv("VITE_FIREBASE_FIRESTORE_DATABASE_ID", "ai-studio-zeroxnetwork-ef98149d-4e69-427d-aa5b-cc5a95b1634b");
+
+export const db = (firestoreDbId && firestoreDbId !== "(default)")
+  ? initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+      localCache: isLocalStorageAvailable 
+        ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        : memoryLocalCache()
+    }, firestoreDbId)
+  : initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+      localCache: isLocalStorageAvailable 
+        ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        : memoryLocalCache()
+    });
 
 export const auth = getAuth(app);
 

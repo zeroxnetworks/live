@@ -1,6 +1,15 @@
 import { adminDb } from "./firebaseAdmin";
 import nodemailer from "nodemailer";
 
+const APP_URL = (process.env.APP_URL || "https://zeroxnetwork.com").replace(/\/+$/, "");
+const APP_HOSTNAME = (() => {
+  try {
+    return new URL(APP_URL).hostname;
+  } catch (e) {
+    return "zeroxnetwork.com";
+  }
+})();
+
 export async function getAsyncEmailAlertsConfig() {
   let dbConfig: any = {};
   try {
@@ -292,7 +301,7 @@ export function buildEnhancedEmailHtml(contentHtml: string, title: string = "Zer
     
     <!-- Top Browser Link -->
     <div style="text-align: center; margin-bottom: 4px; width: 100%; box-sizing: border-box;">
-      <a href="https://zeroxnetwork.ai.studio" style="color: #64748b; font-size: 9.5px; text-decoration: underline; font-weight: 500;">View this email in your browser</a>
+      <a href="${APP_URL}" style="color: #64748b; font-size: 9.5px; text-decoration: underline; font-weight: 500;">View this email in your browser</a>
     </div>
 
     <!-- Central Wrapper Card -->
@@ -300,7 +309,7 @@ export function buildEnhancedEmailHtml(contentHtml: string, title: string = "Zer
       
       <!-- Header Banner with Brand Glow Line -->
       <div class="header-padding" style="background: linear-gradient(180deg, #070b14 0%, #0f172a 100%); padding: 12px 14px 8px; text-align: center; border-bottom: 2px solid #00AEEF; box-sizing: border-box; width: 100%;">
-        <a href="https://zeroxnetwork.ai.studio" style="text-decoration: none; display: inline-block; max-width: 100%;">
+        <a href="${APP_URL}" style="text-decoration: none; display: inline-block; max-width: 100%;">
           <div style="display: inline-block; max-width: 100%;">
             <span style="font-size: 17px; font-weight: 900; color: #ffffff; letter-spacing: 0.12em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
               ZEROX <span style="color: #00AEEF;">NETWORK</span>
@@ -335,7 +344,7 @@ export function buildEnhancedEmailHtml(contentHtml: string, title: string = "Zer
             </td>
             <td class="contact-grid-td" style="width: 33.33%; vertical-align: top; text-align: center; padding: 2px 3px; box-sizing: border-box;">
               <div style="color: #38bdf8; font-size: 8px; font-weight: 700; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">🌐 Domain</div>
-              <a href="https://zeroxnetwork.ai.studio" style="color: #ffffff; text-decoration: none; font-size: 8px; font-weight: 600; display: block; white-space: nowrap;">Visit Website</a>
+              <a href="${APP_URL}" style="color: #ffffff; text-decoration: none; font-size: 8px; font-weight: 600; display: block; white-space: nowrap;">Visit Website</a>
             </td>
           </tr>
         </table>
@@ -411,7 +420,7 @@ export function buildRegistrationOtpEmail(username: string, otpCode: string, ema
     </div>
 
     <div style="text-align:center;margin-top:14px;margin-bottom:8px;">
-      <a href="https://zeroxnetwork.ai.studio/" style="display:inline-block;padding:10px 24px;background:linear-gradient(135deg, #00AEEF 0%, #0072ff 100%);color:#ffffff;text-decoration:none;border-radius:8px;font-weight:800;font-size:11.5px;letter-spacing:0.06em;text-transform:uppercase;box-shadow:0 4px 15px rgba(0,174,239,0.35);">
+      <a href="${APP_URL}/" style="display:inline-block;padding:10px 24px;background:linear-gradient(135deg, #00AEEF 0%, #0072ff 100%);color:#ffffff;text-decoration:none;border-radius:8px;font-weight:800;font-size:11.5px;letter-spacing:0.06em;text-transform:uppercase;box-shadow:0 4px 15px rgba(0,174,239,0.35);">
         Verify &amp; Activate Account →
       </a>
     </div>
@@ -463,7 +472,7 @@ export function buildWelcomeActivatedEmail(username: string, email: string, full
     </div>
 
     <div style="text-align:center;margin-top:14px;margin-bottom:8px;">
-      <a href="https://zeroxnetwork.ai.studio/" style="display:inline-block;padding:10px 24px;background:linear-gradient(135deg, #00AEEF 0%, #0072ff 100%);color:#ffffff;text-decoration:none;border-radius:8px;font-weight:800;font-size:11.5px;letter-spacing:0.06em;text-transform:uppercase;box-shadow:0 4px 15px rgba(0,174,239,0.35);">
+      <a href="${APP_URL}/" style="display:inline-block;padding:10px 24px;background:linear-gradient(135deg, #00AEEF 0%, #0072ff 100%);color:#ffffff;text-decoration:none;border-radius:8px;font-weight:800;font-size:11.5px;letter-spacing:0.06em;text-transform:uppercase;box-shadow:0 4px 15px rgba(0,174,239,0.35);">
         Open ZeroX Dashboard →
       </a>
     </div>
@@ -516,7 +525,7 @@ export function buildPasswordResetLinkEmail(username: string, email: string, res
       <div style="background-color:#0b0f19;padding:10px 12px;border-radius:8px;border:1px solid #1e293b;margin-top:12px;font-size:10px;color:#94a3b8;line-height:1.6;">
         <div>ZeroX Account: <strong style="color:#ffffff;">${username}</strong></div>
         <div>Account Email: <strong style="color:#ffffff;">${email}</strong></div>
-        <div>Authorized Domain: <strong style="color:#38bdf8;">zeroxnetwork.ai.studio</strong></div>
+        <div>Authorized Domain: <strong style="color:#38bdf8;">${APP_HOSTNAME}</strong></div>
         <div>Request Timestamp: <strong style="color:#ffffff;">${new Date().toUTCString()}</strong></div>
       </div>
     </div>
@@ -574,7 +583,7 @@ export function buildPasswordResetOtpEmail(username: string, otpCode: string, em
     </div>
 
     <div style="text-align:center;margin-top:14px;margin-bottom:8px;">
-      <a href="https://zeroxnetwork.ai.studio/" style="display:inline-block;padding:10px 24px;background:linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);color:#ffffff;text-decoration:none;border-radius:8px;font-weight:800;font-size:11.5px;letter-spacing:0.06em;text-transform:uppercase;box-shadow:0 4px 15px rgba(239,68,68,0.35);">
+      <a href="${APP_URL}/" style="display:inline-block;padding:10px 24px;background:linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);color:#ffffff;text-decoration:none;border-radius:8px;font-weight:800;font-size:11.5px;letter-spacing:0.06em;text-transform:uppercase;box-shadow:0 4px 15px rgba(239,68,68,0.35);">
         Complete Password Reset →
       </a>
     </div>
@@ -617,7 +626,7 @@ export function buildPasswordResetSuccessEmail(username: string, email: string):
     </div>
 
     <div style="text-align:center;margin-top:14px;margin-bottom:8px;">
-      <a href="https://zeroxnetwork.ai.studio/" style="display:inline-block;padding:10px 24px;background:linear-gradient(135deg, #00AEEF 0%, #0072ff 100%);color:#ffffff;text-decoration:none;border-radius:8px;font-weight:800;font-size:11.5px;letter-spacing:0.06em;text-transform:uppercase;box-shadow:0 4px 15px rgba(0,174,239,0.35);">
+      <a href="${APP_URL}/" style="display:inline-block;padding:10px 24px;background:linear-gradient(135deg, #00AEEF 0%, #0072ff 100%);color:#ffffff;text-decoration:none;border-radius:8px;font-weight:800;font-size:11.5px;letter-spacing:0.06em;text-transform:uppercase;box-shadow:0 4px 15px rgba(0,174,239,0.35);">
         Login to ZeroX Dashboard →
       </a>
     </div>

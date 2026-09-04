@@ -100,17 +100,17 @@ export async function getCryptoGatewaySettingsFromDb() {
 export async function getNowPaymentsConfig() {
   const db = await getCryptoGatewaySettingsFromDb();
   
-  const apiKey = db.apiKey || "";
-  const ipnSecret = db.ipnSecret || "";
+  const apiKey = db.apiKey || process.env.NOWPAYMENTS_API_KEY || "";
+  const ipnSecret = db.ipnSecret || process.env.NOWPAYMENTS_IPN_SECRET || "";
   
-  const envMode = db.environment || "sandbox";
+  const envMode = db.environment || (process.env.NOWPAYMENTS_SANDBOX === "true" ? "sandbox" : (process.env.NOWPAYMENTS_API_KEY ? "production" : "sandbox"));
   const isSandbox = envMode === "sandbox";
   const baseUrl = isSandbox 
     ? "https://api-sandbox.nowpayments.io/v1/" 
     : "https://api.nowpayments.io/v1/";
   
-  const adminEmail = process.env.ADMIN_ALERT_EMAIL || "info.rynmirza@gmail.com";
-  const appUrl = process.env.APP_URL || "https://zeroxnetwork.ai.studio";
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL || "zeroxnetworks@gmail.com";
+  const appUrl = process.env.APP_URL || "https://zeroxnetwork.com";
   const gatewayStatus = db.gatewayStatus || "enabled";
 
   return { apiKey, ipnSecret, isSandbox, envMode, baseUrl, adminEmail, appUrl, gatewayStatus };

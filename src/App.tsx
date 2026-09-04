@@ -423,7 +423,18 @@ export default function App() {
     const emailLower = (currentUser.email || "").toLowerCase().trim();
     const usernameLower = (currentUser.username || "").toLowerCase().trim();
 
-    // Primary Super Admins: info.rayanmirza@gmail.com, pandapals.manager@gmail.com, or username Zerox, or explicit ID
+    // 1. PRIMARY SUPREME SUPER ADMIN / ROOT ADMIN (Highest Platform Authority): zeroxnetworks@gmail.com
+    if (emailLower === "zeroxnetworks@gmail.com" || (currentUser.role && (currentUser.role === "SUPREME_SUPER_ADMIN" || currentUser.role === "Supreme Super Admin"))) {
+      return {
+        isAdmin: true,
+        role: "SUPREME_SUPER_ADMIN",
+        isPrimary: true,
+        isSupreme: true,
+        customTitle: "Primary Supreme Super Admin (Root Authority)"
+      };
+    }
+
+    // 2. Primary Super Admins: info.rayanmirza@gmail.com, pandapals.manager@gmail.com, or username Zerox, or explicit ID
     if (
       emailLower === "info.rayanmirza@gmail.com" ||
       emailLower === "pandapals.manager@gmail.com" ||
@@ -434,6 +445,7 @@ export default function App() {
         isAdmin: true,
         role: "PRIMARY SUPER ADMIN",
         isPrimary: true,
+        isSupreme: false,
         customTitle: "Chief Executive & Platform Lead"
       };
     }
@@ -1099,7 +1111,7 @@ export default function App() {
 
   // Real-time synchronization of all users (primarily for Admin balance center)
   useEffect(() => {
-    const isUserAdmin = isAdminOpen || currentUser?.email?.toLowerCase() === "info.rynmirza@gmail.com";
+    const isUserAdmin = isAdminOpen || !!userAdminInfo?.isAdmin || currentUser?.email?.toLowerCase() === "zeroxnetworks@gmail.com" || currentUser?.email?.toLowerCase() === "info.rynmirza@gmail.com";
     if (!isUserAdmin) {
       if (currentUser) {
         setRegisteredUsers([currentUser]);
@@ -1151,7 +1163,7 @@ export default function App() {
       setDepositRequests([]);
       return;
     }
-    const isUserAdmin = isAdminOpen || currentUser?.email?.toLowerCase() === "info.rynmirza@gmail.com";
+    const isUserAdmin = isAdminOpen || !!userAdminInfo?.isAdmin || currentUser?.email?.toLowerCase() === "zeroxnetworks@gmail.com" || currentUser?.email?.toLowerCase() === "info.rynmirza@gmail.com";
     const depositsCol = isUserAdmin
       ? collection(db, "deposits")
       : query(collection(db, "deposits"), where("userId", "==", currentUser.id));
@@ -1226,7 +1238,7 @@ export default function App() {
       setOrders([]);
       return;
     }
-    const isUserAdmin = isAdminOpen || currentUser?.email?.toLowerCase() === "info.rynmirza@gmail.com";
+    const isUserAdmin = isAdminOpen || !!userAdminInfo?.isAdmin || currentUser?.email?.toLowerCase() === "zeroxnetworks@gmail.com" || currentUser?.email?.toLowerCase() === "info.rynmirza@gmail.com";
     const ordersCol = isUserAdmin
       ? collection(db, "orders")
       : query(collection(db, "orders"), where("userId", "==", currentUser.id));
@@ -1413,7 +1425,7 @@ export default function App() {
       setSmmOrders([]);
       return;
     }
-    const isUserAdmin = isAdminOpen || currentUser?.email?.toLowerCase() === "info.rynmirza@gmail.com";
+    const isUserAdmin = isAdminOpen || !!userAdminInfo?.isAdmin || currentUser?.email?.toLowerCase() === "zeroxnetworks@gmail.com" || currentUser?.email?.toLowerCase() === "info.rynmirza@gmail.com";
     const colRef = isUserAdmin
       ? collection(db, "smm_orders")
       : query(collection(db, "smm_orders"), where("userId", "==", currentUser.id));
@@ -1487,7 +1499,7 @@ export default function App() {
 
   // Real-time synchronization of SMM Activity Logs
   useEffect(() => {
-    const isUserAdmin = isAdminOpen || currentUser?.email?.toLowerCase() === "info.rynmirza@gmail.com";
+    const isUserAdmin = isAdminOpen || !!userAdminInfo?.isAdmin || currentUser?.email?.toLowerCase() === "zeroxnetworks@gmail.com" || currentUser?.email?.toLowerCase() === "info.rynmirza@gmail.com";
     if (!isUserAdmin) {
       setSmmLogs([]);
       return;
@@ -2697,11 +2709,14 @@ Code: ${newSmsText}` });
                 <button
                   type="button"
                   onClick={() => setIsAdminOpen(true)}
-                  className="bg-slate-950 hover:bg-slate-900 text-amber-300 border border-amber-400/50 rounded-full px-2.5 py-1.5 sm:px-3 sm:py-1.5 flex items-center gap-1.5 transition-all cursor-pointer shadow-md text-xs font-black uppercase tracking-wider active:scale-95 shrink-0"
-                  title={`Open Admin Portal (${userAdminInfo.role})`}
+                  className={userAdminInfo.isSupreme 
+                    ? "bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 border border-yellow-300 rounded-full px-3 py-1.5 flex items-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-amber-500/25 text-xs font-black uppercase tracking-wider active:scale-95 shrink-0 animate-pulse"
+                    : "bg-slate-950 hover:bg-slate-900 text-amber-300 border border-amber-400/50 rounded-full px-2.5 py-1.5 sm:px-3 sm:py-1.5 flex items-center gap-1.5 transition-all cursor-pointer shadow-md text-xs font-black uppercase tracking-wider active:scale-95 shrink-0"
+                  }
+                  title={userAdminInfo.isSupreme ? "Open Admin Portal (Primary Supreme Super Admin - Root Authority)" : `Open Admin Portal (${userAdminInfo.role})`}
                 >
-                  <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span className="hidden sm:inline">Admin Portal</span>
+                  <ShieldCheck className={`w-4 h-4 shrink-0 ${userAdminInfo.isSupreme ? "text-slate-950" : "text-amber-400"}`} />
+                  <span className="hidden sm:inline">{userAdminInfo.isSupreme ? "Supreme Admin" : "Admin Portal"}</span>
                 </button>
               )}
             </div>

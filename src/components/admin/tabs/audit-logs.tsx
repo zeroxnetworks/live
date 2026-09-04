@@ -22,6 +22,18 @@ interface AuditLogsTabProps {
 // Preset Role Permissions Definitions
 export const ROLE_PERMISSIONS_MATRIX: AdminRolePermission[] = [
   {
+    role: "Supreme Super Admin",
+    title: "Primary Supreme Super Admin (Root Authority)",
+    description: "Inviolable highest root authority with complete, unrestricted access across all platform modules, API gateways, database, user security, and administrator management.",
+    badgeColor: "bg-amber-100 text-amber-900 border-amber-300 font-black",
+    allowedTabs: [
+      "general", "analytics", "deposit-requests", "deposit-settings", "users",
+      "smm", "sms-providers", "sms-orders", "services", "custom", "subscriptions",
+      "announcements", "branding", "reviews", "privacy", "tab-maintenance", "links",
+      "loyalty", "imap", "audit-logs", "support-tickets"
+    ]
+  },
+  {
     role: "Super Admin",
     title: "Master System Administrator",
     description: "Unrestricted access to all admin tabs, global API keys, audit logs, RBAC controls, and system maintenance.",
@@ -513,7 +525,7 @@ export default function AuditLogsTab(props: AuditLogsTabProps) {
                     {/* Header Row */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-purple-100 border border-purple-200 overflow-hidden shrink-0 flex items-center justify-center font-black text-purple-700 text-base shadow-2xs">
+                        <div className={`w-12 h-12 rounded-2xl ${admin.email.toLowerCase() === 'zeroxnetworks@gmail.com' ? 'bg-amber-100 border border-amber-300 text-amber-900' : 'bg-purple-100 border border-purple-200 text-purple-700'} overflow-hidden shrink-0 flex items-center justify-center font-black text-base shadow-2xs`}>
                           {admin.avatarUrl ? (
                             <img src={admin.avatarUrl} alt={admin.username} className="w-full h-full object-cover" />
                           ) : (
@@ -523,29 +535,41 @@ export default function AuditLogsTab(props: AuditLogsTabProps) {
                         <div>
                           <h4 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
                             <span>{admin.username}</span>
+                            {admin.email.toLowerCase() === 'zeroxnetworks@gmail.com' && (
+                              <span className="bg-amber-500 text-slate-950 font-black text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+                                Root Authority
+                              </span>
+                            )}
                           </h4>
                           <p className="text-[11px] text-slate-500 font-medium font-mono">{admin.email}</p>
-                          <span className="inline-block mt-0.5 text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100">
+                          <span className={`inline-block mt-0.5 text-[10px] font-bold ${admin.email.toLowerCase() === 'zeroxnetworks@gmail.com' ? 'text-amber-900 bg-amber-50 border border-amber-200' : 'text-purple-700 bg-purple-50 border border-purple-100'} px-2 py-0.5 rounded`}>
                             {admin.customTitle || admin.role}
                           </span>
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => {
-                          const newStatus = isActive ? "SUSPENDED" : "ACTIVE";
-                          handleUpdateAppointedAdmin(admin.id, { status: newStatus });
-                        }}
-                        className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition cursor-pointer border flex items-center gap-1 shrink-0 ${
-                          isActive 
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" 
-                            : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
-                        }`}
-                        title="Click to toggle Active/Suspended status"
-                      >
-                        <Power className="w-3 h-3" />
-                        <span>{admin.status}</span>
-                      </button>
+                      {admin.email.toLowerCase() === 'zeroxnetworks@gmail.com' ? (
+                        <div className="px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border border-amber-300 bg-amber-50 text-amber-900 flex items-center gap-1 shrink-0">
+                          <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Permanent Root</span>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            const newStatus = isActive ? "SUSPENDED" : "ACTIVE";
+                            handleUpdateAppointedAdmin(admin.id, { status: newStatus });
+                          }}
+                          className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition cursor-pointer border flex items-center gap-1 shrink-0 ${
+                            isActive 
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" 
+                              : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
+                          }`}
+                          title="Click to toggle Active/Suspended status"
+                        >
+                          <Power className="w-3 h-3" />
+                          <span>{admin.status}</span>
+                        </button>
+                      )}
                     </div>
 
                     {/* Role Badge & Tabs Count */}
@@ -607,17 +631,19 @@ export default function AuditLogsTab(props: AuditLogsTabProps) {
                       <Activity className="w-4 h-4" />
                     </button>
 
-                    <button
-                      onClick={() => {
-                        if (confirm(`Are you sure you want to revoke administrative access for ${admin.username} (${admin.email})?`)) {
-                          handleDeleteAppointedAdmin(admin.id);
-                        }
-                      }}
-                      className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition cursor-pointer border border-rose-200"
-                      title="Revoke Admin Status"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {admin.email.toLowerCase() !== 'zeroxnetworks@gmail.com' && (
+                      <button
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to revoke administrative access for ${admin.username} (${admin.email})?`)) {
+                            handleDeleteAppointedAdmin(admin.id);
+                          }
+                        }}
+                        className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition cursor-pointer border border-rose-200"
+                        title="Revoke Admin Status"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );

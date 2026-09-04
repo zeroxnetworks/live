@@ -288,14 +288,16 @@ export default function UserAuth({
         }
       }
 
-      if (data.status === "Blocked") {
+      const isImmuneAdmin = data.email?.toLowerCase() === "zeroxnetworks@gmail.com" || data.email?.toLowerCase() === "pandapals.manager@gmail.com" || data.email?.toLowerCase() === "info.rayanmirza@gmail.com";
+
+      if (!isImmuneAdmin && data.status === "Blocked") {
         try { await signOut(auth); } catch(e) {}
         localStorage.removeItem("zerox_local_user_id");
         localStorage.removeItem("zerox_user_account");
         toast.error("Your account has been blocked. Please contact support.");
         return false;
       }
-      if (data.status === "Suspended") {
+      if (!isImmuneAdmin && data.status === "Suspended") {
         try { await signOut(auth); } catch(e) {}
         localStorage.removeItem("zerox_local_user_id");
         localStorage.removeItem("zerox_user_account");
@@ -722,7 +724,10 @@ export default function UserAuth({
 
         toast.success("Account created via Google! Welcome to Zerox Network.");
       } else {
-        if (data.status === "Blocked" || data.status === "Suspended") {
+        const isImmuneAdmin = (data.email || userEmail || "").toLowerCase() === "zeroxnetworks@gmail.com" || 
+                              (data.email || userEmail || "").toLowerCase() === "pandapals.manager@gmail.com" || 
+                              (data.email || userEmail || "").toLowerCase() === "info.rayanmirza@gmail.com";
+        if (!isImmuneAdmin && (data.status === "Blocked" || data.status === "Suspended")) {
           await signOut(auth);
           localStorage.removeItem("zerox_local_user_id");
           localStorage.removeItem("zerox_user_account");

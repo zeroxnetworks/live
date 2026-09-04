@@ -203,7 +203,8 @@ const app = express();
   startOrderPollingEngine();
   startProviderSyncEngine();
 
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
+  const APP_BASE_URL = (process.env.APP_URL || "https://zeroxnetwork.com").replace(/\/+$/, "");
 
   let aiInstance: GoogleGenAI | null = null;
   const getGoogleGenAI = () => {
@@ -2909,7 +2910,7 @@ CRITICAL RULES & BOUNDARIES:
       }
 
       // Construct official ZeroX Network domain password reset URL
-      const resetUrl = `https://zeroxnetwork.ai.studio/?reset_token=${resetToken}`;
+      const resetUrl = `${APP_BASE_URL}/?reset_token=${resetToken}`;
 
       // Build dedicated ZeroX Network password reset email template
       const emailHtml = buildPasswordResetLinkEmail(targetUsername, targetUserEmail, resetUrl);
@@ -5490,14 +5491,16 @@ app.post("/api/email/:action", async (req, res) => {
   // Firebase Authentication Handler Proxy (/__/auth/*)
   app.all("/__/auth/*", async (req, res) => {
     try {
-      const targetUrl = `https://charismatic-analog-ft3g1.firebaseapp.com${req.originalUrl}`;
+      const fbHost = process.env.VITE_FIREBASE_AUTH_DOMAIN ||
+        (process.env.VITE_FIREBASE_PROJECT_ID ? `${process.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com` : "charismatic-analog-ft3g1.firebaseapp.com");
+      const targetUrl = `https://${fbHost}${req.originalUrl}`;
       const headers: Record<string, string> = {};
       for (const [key, val] of Object.entries(req.headers)) {
         if (key.toLowerCase() !== "host" && val) {
           headers[key] = Array.isArray(val) ? val.join(",") : val;
         }
       }
-      headers["host"] = "charismatic-analog-ft3g1.firebaseapp.com";
+      headers["host"] = fbHost;
 
       const fetchOptions: RequestInit = {
         method: req.method,
@@ -5640,6 +5643,315 @@ app.post("/api/email/:action", async (req, res) => {
       });
 
       res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  // ==========================================
+  // VISITOR INFO API (Geo & IP resolution)
+  // ==========================================
+  app.get("/api/visitor-info", (req, res) => {
+    try {
+      const forwarded = req.headers["x-forwarded-for"];
+      const ip = (typeof forwarded === "string" ? forwarded.split(",")[0] : req.socket.remoteAddress || "127.0.0.1").trim();
+      const userAgent = req.headers["user-agent"] || "";
+      const country = (req.headers["cf-ipcountry"] as string) || "Unknown";
+      res.json({
+        ip,
+        userAgent,
+        country,
+        city: "Unknown",
+        countryCode: country !== "Unknown" ? country : "PK"
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to resolve visitor info" });
+    }
+  });
+
+  // ==========================================
+  // WHATSAPP BOT & GATEWAY MANAGEMENT API
+  // ==========================================
+  app.get("/api/whatsapp/status", async (req, res) => {
+    try {
+      const status = getWhatsAppStatus();
+      res.json(status);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to get WhatsApp status" });
+    }
+  });
+
+  app.post("/api/whatsapp/connect", async (req, res) => {
+    try {
+      initWhatsAppEngine();
+      const status = getWhatsAppStatus();
+      res.json({ success: true, status });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to connect WhatsApp" });
+    }
+  });
+
+  app.post("/api/whatsapp/logout", async (req, res) => {
+    try {
+      await logoutWhatsApp();
+      res.json({ success: true, message: "Logged out from WhatsApp" });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to logout WhatsApp" });
+    }
+  });
+
+  app.post("/api/whatsapp/reset", async (req, res) => {
+    try {
+      await resetWhatsAppSession();
+      res.json({ success: true, message: "WhatsApp session reset" });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to reset WhatsApp session" });
+    }
+  });
+
+  app.post("/api/whatsapp/pairing-code", async (req, res) => {
+    try {
+      const { phone } = req.body;
+      if (!phone) return res.status(400).json({ error: "Phone number is required" });
+      const code = await requestWhatsAppPairingCode(phone);
+      res.json({ success: true, pairingCode: code });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to get pairing code" });
+    }
+  });
+
+  app.post("/api/whatsapp/send-test", async (req, res) => {
+    try {
+      const { phone, message } = req.body;
+      if (!phone || !message) return res.status(400).json({ error: "Phone and message required" });
+      const result = await sendWhatsAppMessage(phone, message);
+      res.json({ success: result });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to send WhatsApp test message" });
+    }
+  });
+
+  app.get("/api/whatsapp/analytics", (req, res) => {
+    try {
+      res.json(whatsappAnalytics || { totalMessagesSent: 0, totalMessagesReceived: 0 });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get("/api/whatsapp/logs", (req, res) => {
+    try {
+      const logs = getWhatsAppLogs();
+      res.json({ success: true, logs });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/whatsapp/trigger-notification", async (req, res) => {
+    try {
+      const { module = "SYSTEM", title = "Notification", ...rest } = req.body || {};
+      const result = await triggerWhatsAppFromRoute(module, title, rest);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  // Admin WhatsApp 2FA & Security API
+  app.post("/api/whatsapp-auth/send-admin-2fa-otp", async (req, res) => {
+    try {
+      const { phone, adminEmail } = req.body;
+      const targetPhone = phone || "447868713315";
+      const targetEmail = adminEmail || "zeroxnetworks@gmail.com";
+      const result = await sendWhatsAppOtp({
+        identifier: targetEmail,
+        phone: targetPhone,
+        otpType: "ADMIN_2FA",
+        ip: (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "127.0.0.1",
+        userAgent: req.headers["user-agent"] || ""
+      });
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post("/api/whatsapp-auth/verify-admin-2fa-otp", async (req, res) => {
+    try {
+      const { otp, adminEmail } = req.body;
+      const targetEmail = adminEmail || "zeroxnetworks@gmail.com";
+      const result = await verifyWhatsAppOtp({
+        identifier: targetEmail,
+        otp: String(otp || ""),
+        otpType: "ADMIN_2FA",
+        ip: (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "127.0.0.1",
+        userAgent: req.headers["user-agent"] || ""
+      });
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.get("/api/whatsapp-auth/security-stats", async (req, res) => {
+    try {
+      const stats = await getSecurityDashboardStats();
+      res.json({ success: true, stats });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post("/api/whatsapp-auth/send-test-otp", async (req, res) => {
+    try {
+      const { phone, identifier } = req.body;
+      if (!phone) return res.status(400).json({ success: false, error: "Phone number required" });
+      const result = await sendWhatsAppOtp({
+        identifier: identifier || phone,
+        phone: phone,
+        otpType: "RECOVERY",
+        ip: (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "127.0.0.1",
+        userAgent: req.headers["user-agent"] || ""
+      });
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  // ==========================================
+  // BACKUP & RECOVERY API
+  // ==========================================
+  app.post("/api/backup/create", requireAdminAuth, async (req, res) => {
+    try {
+      const result = await createEnterpriseFullBackup({
+        adminName: req.body.adminName || "Admin",
+        adminEmail: req.body.adminEmail || "zeroxnetworks@gmail.com",
+        notes: req.body.notes || "Manual Admin Backup",
+        ipAddress: (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "127.0.0.1"
+      });
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post("/api/backup/restore", requireAdminAuth, async (req, res) => {
+    try {
+      const { backupId } = req.body;
+      if (!backupId) return res.status(400).json({ success: false, error: "backupId is required" });
+      const result = await restoreEnterpriseBackup(backupId, {
+        adminEmail: req.body.adminEmail || "zeroxnetworks@gmail.com",
+        ipAddress: (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "127.0.0.1",
+        userAgent: req.headers["user-agent"] || ""
+      });
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  // ==========================================
+  // AI VOICE ASSISTANT API
+  // ==========================================
+  app.post("/api/ai-voice/start", async (req, res) => {
+    try {
+      const { userId, username } = req.body;
+      const sessionId = `voice_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      
+      await adminDb.collection("ai_voice_sessions").doc(sessionId).set({
+        sessionId,
+        userId: userId || "guest",
+        username: username || "Guest",
+        startedAt: new Date().toISOString(),
+        status: "ACTIVE",
+        lastHeartbeat: Date.now()
+      });
+
+      res.json({ success: true, sessionId });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post("/api/ai-voice/heartbeat", async (req, res) => {
+    try {
+      const { sessionId } = req.body;
+      if (sessionId) {
+        await adminDb.collection("ai_voice_sessions").doc(sessionId).update({
+          lastHeartbeat: Date.now()
+        }).catch(() => {});
+      }
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post("/api/ai-voice/end", async (req, res) => {
+    try {
+      const { sessionId, userId, connectedDurationSeconds, endReason } = req.body;
+      const duration = Math.max(0, Number(connectedDurationSeconds) || 0);
+      const ratePerMinutePKR = 10.0;
+      const billableSeconds = duration > 0 ? duration : 0;
+      const totalChargePKR = Number(((billableSeconds / 60) * ratePerMinutePKR).toFixed(2));
+
+      if (sessionId) {
+        await adminDb.collection("ai_voice_sessions").doc(sessionId).update({
+          endedAt: new Date().toISOString(),
+          durationSeconds: billableSeconds,
+          totalChargePKR,
+          endReason: endReason || "USER_HANGUP",
+          status: "COMPLETED"
+        }).catch(() => {});
+      }
+
+      // Deduct from user balance if user is logged in and charge > 0
+      if (userId && userId !== "guest" && totalChargePKR > 0) {
+        try {
+          const userRef = adminDb.collection("users").doc(userId);
+          await adminDb.runTransaction(async (t) => {
+            const userDoc = await t.get(userRef);
+            if (userDoc.exists) {
+              const curBal = Number(userDoc.data()?.balance || 0);
+              const newBal = Math.max(0, curBal - totalChargePKR);
+              t.update(userRef, { balance: newBal });
+            }
+          });
+        } catch (balErr) {
+          console.warn("AI Voice billing balance deduction warning:", balErr);
+        }
+      }
+
+      res.json({
+        success: true,
+        billableSeconds,
+        totalChargePKR,
+        totalCharge: totalChargePKR
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.get("/api/ai-voice/analytics", async (req, res) => {
+    try {
+      const snap = await adminDb.collection("ai_voice_sessions").limit(100).get();
+      const sessions = snap.docs.map(d => d.data());
+      const totalCalls = sessions.length;
+      const totalSeconds = sessions.reduce((acc, s) => acc + (s.durationSeconds || 0), 0);
+      const totalRevenuePKR = sessions.reduce((acc, s) => acc + (s.totalChargePKR || 0), 0);
+
+      res.json({
+        success: true,
+        analytics: {
+          totalCalls,
+          totalMinutes: Number((totalSeconds / 60).toFixed(1)),
+          totalRevenuePKR: Number(totalRevenuePKR.toFixed(2)),
+          recentSessions: sessions.slice(0, 10)
+        }
+      });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     }

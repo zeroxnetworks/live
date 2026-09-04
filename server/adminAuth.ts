@@ -7,21 +7,40 @@ const ADMIN_KEYS = new Set([
   "admin123"
 ]);
 
+export const ROOT_ADMIN_EMAIL = "zeroxnetworks@gmail.com";
+
+export function isSupremeSuperAdmin(email?: string, role?: string): boolean {
+  if (!email && !role) return false;
+  const cleanEmail = (email || "").toLowerCase().trim();
+  const cleanRole = (role || "").toUpperCase().trim();
+  return cleanEmail === ROOT_ADMIN_EMAIL || cleanRole === "SUPREME_SUPER_ADMIN";
+}
+
 export async function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
   try {
-    // 1. Check header key
+    // 1. Direct Root Admin Check via Headers
+    const adminEmailHeader = (req.headers["x-admin-email"] as string || req.headers["x-user-email"] as string || "").toLowerCase().trim();
+    if (adminEmailHeader === ROOT_ADMIN_EMAIL) {
+      return next();
+    }
+
+    // 2. Check header key
     const headerKey = req.headers["x-admin-key"] as string;
     if (headerKey && ADMIN_KEYS.has(headerKey)) {
       return next();
     }
 
-    // 2. Check Bearer Auth / Firebase ID Token if provided
+    // 3. Check body or query admin email
+    const requestEmail = (req.body?.adminEmail || req.body?.userEmail || req.query?.adminEmail || "").toString().toLowerCase().trim();
+    if (requestEmail === ROOT_ADMIN_EMAIL) {
+      return next();
+    }
+
+    // 4. Check Bearer Auth / Firebase ID Token if provided
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const idToken = authHeader.split("Bearer ")[1];
       if (idToken) {
-        // Validate via Firebase auth or checking uid in admins collection
-        // For security in custom server setup: check if request body/query has userId or email
         const userId = req.headers["x-user-id"] as string || req.body?.adminUserId || req.query?.adminUserId;
         if (userId) {
           const adminDoc = await adminDb.collection("admins").doc(userId).get();
@@ -29,8 +48,14 @@ export async function requireAdminAuth(req: Request, res: Response, next: NextFu
             return next();
           }
           const userDoc = await adminDb.collection("users").doc(userId).get();
-          if (userDoc.exists && userDoc.data()?.role === "admin") {
-            return next();
+          if (userDoc.exists) {
+            const uData = userDoc.data() || {};
+            const userEmail = (uData.email || "").toLowerCase().trim();
+            const userRole = (uData.role || "").toString().toUpperCase().trim();
+
+            if (userEmail === ROOT_ADMIN_EMAIL || userRole === "SUPREME_SUPER_ADMIN" || userRole === "SUPER ADMIN" || userRole === "ADMIN") {
+              return next();
+            }
           }
         }
       }
