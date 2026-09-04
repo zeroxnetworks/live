@@ -5,7 +5,7 @@ import {
   Printer, FileText, ShieldCheck, Globe, Clock, Layers, Award, FileCode, Loader2, Coins, Server,
   Tv, CreditCard, Lock, Megaphone, Check, Star, ArrowUpRight, Crown, PlayCircle, MessageSquare,
   Shield, HelpCircle, CheckSquare, KeyRound, UserCheck, AlertOctagon, Share2, Smartphone, Database,
-  TrendingUp, Calculator, Percent, BarChart2
+  TrendingUp, Calculator, Percent, BarChart2, RotateCcw, Activity
 } from "lucide-react";
 import { 
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, PieChart as RechartsPieChart, Pie, Cell,
@@ -20,10 +20,12 @@ import {
 } from "../types";
 import CurrencyDisplay from "./CurrencyDisplay";
 import { DEFAULT_REVIEWS, DEFAULT_PRIVACY_POLICY } from "../lib/reviewsAndPolicyStore";
-import { doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { doc, deleteDoc, updateDoc, collection, getDocs, writeBatch, query, limit } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { safeFixed, toSafeNumber, safePercent, safeLocaleString, safeRound, safeFloor, safeCeil } from "../lib/safeNumeric";
 import { AnalyticsCardErrorBoundary } from "./admin/AnalyticsCardErrorBoundary";
+import { AnalyticsBatchActionBar } from "./admin/AnalyticsBatchActionBar";
+import { AnalyticsDataManagementModal, CategoryDataInfo } from "./admin/AnalyticsDataManagementModal";
 
 interface EnterpriseAnalyticsProps {
   cryptoRate?: number;
@@ -85,6 +87,11 @@ export default function EnterpriseAnalytics({
   const [reportGeneratedAt, setReportGeneratedAt] = useState("");
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
+  // Data Management Modal state & telemetry counts
+  const [showDataManagementModal, setShowDataManagementModal] = useState(false);
+  const [liveSessionsCount, setLiveSessionsCount] = useState<number>(0);
+  const [liveEventsCount, setLiveEventsCount] = useState<number>(0);
+
   // Deletion State Trackers (Local view state override)
   const [deletedSmmIds, setDeletedSmmIds] = useState<Set<string | number>>(new Set());
   const [deletedSmsIds, setDeletedSmsIds] = useState<Set<string | number>>(new Set());
@@ -93,6 +100,15 @@ export default function EnterpriseAnalytics({
   const [deletedActivityIds, setDeletedActivityIds] = useState<Set<string>>(new Set());
   const [deletedSubOrderIds, setDeletedSubOrderIds] = useState<Set<string>>(new Set());
   const [deletedReviewIds, setDeletedReviewIds] = useState<Set<string>>(new Set());
+
+  // Selection States for "Select to Delete" capability
+  const [selectedSmmIds, setSelectedSmmIds] = useState<Set<string | number>>(new Set());
+  const [selectedSmsIds, setSelectedSmsIds] = useState<Set<string | number>>(new Set());
+  const [selectedSubOrderIds, setSelectedSubOrderIds] = useState<Set<string>>(new Set());
+  const [selectedDepositIds, setSelectedDepositIds] = useState<Set<string | number>>(new Set());
+  const [selectedReviewIds, setSelectedReviewIds] = useState<Set<string>>(new Set());
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [selectedActivityIds, setSelectedActivityIds] = useState<Set<string>>(new Set());
 
   // Search & Filter States
   const [orderSearch, setOrderSearch] = useState("");
@@ -690,6 +706,140 @@ interface TelemetryItem {
     }
   };
 
+  // Batch deletion helper for Firestore collections
+  const executeBatchDeleteDocs = async (collectionName: string, ids: (string | number)[]) => {
+    const CHUNK_SIZE = 400;
+    for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+      const chunk = ids.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(db);
+      for (const id of chunk) {
+        batch.delete(doc(db, collectionName, id.toString()));
+      }
+      await batch.commit();
+    }
+  };
+
+  // Batch delete handlers for each entity type
+  const handleBatchDeleteSmmOrders = async () => {
+    if (selectedSmmIds.size === 0) return;
+    const ids = Array.from(selectedSmmIds);
+    try {
+      await executeBatchDeleteDocs("smm_orders", ids);
+      setDeletedSmmIds(prev => {
+        const next = new Set(prev);
+        ids.forEach(id => next.add(id));
+        return next;
+      });
+      setSelectedSmmIds(new Set());
+      toast.success(`Deleted ${ids.length} SMM orders`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete selected SMM orders");
+    }
+  };
+
+  const handleBatchDeleteSmsOrders = async () => {
+    if (selectedSmsIds.size === 0) return;
+    const ids = Array.from(selectedSmsIds);
+    try {
+      await executeBatchDeleteDocs("orders", ids);
+      setDeletedSmsIds(prev => {
+        const next = new Set(prev);
+        ids.forEach(id => next.add(id));
+        return next;
+      });
+      setSelectedSmsIds(new Set());
+      toast.success(`Deleted ${ids.length} SMS orders`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete selected SMS orders");
+    }
+  };
+
+  const handleBatchDeleteSubOrders = async () => {
+    if (selectedSubOrderIds.size === 0) return;
+    const ids = Array.from(selectedSubOrderIds);
+    try {
+      await executeBatchDeleteDocs("subscription_orders", ids);
+      setDeletedSubOrderIds(prev => {
+        const next = new Set(prev);
+        ids.forEach(id => next.add(id));
+        return next;
+      });
+      setSelectedSubOrderIds(new Set());
+      toast.success(`Deleted ${ids.length} Subscription orders`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete selected Subscription orders");
+    }
+  };
+
+  const handleBatchDeleteDeposits = async () => {
+    if (selectedDepositIds.size === 0) return;
+    const ids = Array.from(selectedDepositIds);
+    try {
+      await executeBatchDeleteDocs("deposit_requests", ids);
+      setDeletedDepositIds(prev => {
+        const next = new Set(prev);
+        ids.forEach(id => next.add(id));
+        return next;
+      });
+      setSelectedDepositIds(new Set());
+      toast.success(`Deleted ${ids.length} deposit requests`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete selected deposit requests");
+    }
+  };
+
+  const handleBatchDeleteReviews = async () => {
+    if (selectedReviewIds.size === 0) return;
+    const ids = Array.from(selectedReviewIds);
+    try {
+      await executeBatchDeleteDocs("reviews", ids);
+      setDeletedReviewIds(prev => {
+        const next = new Set(prev);
+        ids.forEach(id => next.add(id));
+        return next;
+      });
+      setSelectedReviewIds(new Set());
+      toast.success(`Deleted ${ids.length} reviews`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete selected reviews");
+    }
+  };
+
+  const handleBatchDeleteUsers = async () => {
+    if (selectedUserIds.size === 0) return;
+    const ids = Array.from(selectedUserIds);
+    try {
+      await executeBatchDeleteDocs("users", ids);
+      setDeletedUserIds(prev => {
+        const next = new Set(prev);
+        ids.forEach(id => next.add(id));
+        return next;
+      });
+      setSelectedUserIds(new Set());
+      toast.success(`Removed ${ids.length} users`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete selected users");
+    }
+  };
+
+  const handleBatchDeleteActivities = () => {
+    if (selectedActivityIds.size === 0) return;
+    const ids = Array.from(selectedActivityIds);
+    setDeletedActivityIds(prev => {
+      const next = new Set(prev);
+      ids.forEach(id => next.add(id));
+      return next;
+    });
+    setSelectedActivityIds(new Set());
+    toast.success(`Hidden ${ids.length} activity items`);
+  };
+
   // --- COMPUTATIONS ---
   const totalUsersCount = users.length;
   const verifiedUsersCount = users.filter(u => u.apiStatus === "Verified" || u.status === "active" || u.status === "Active").length;
@@ -1024,6 +1174,274 @@ interface TelemetryItem {
     return list.slice(0, 18);
   }, [smmOrders, orders, subscriptionOrders, depositRequests, reviews, deletedActivityIds]);
 
+  // Fetch telemetry sessions and events count for data management modal
+  useEffect(() => {
+    getDocs(query(collection(db, "analytics_sessions"), limit(500)))
+      .then(snap => setLiveSessionsCount(snap.size))
+      .catch(() => {});
+    getDocs(query(collection(db, "analytics_events"), limit(500)))
+      .then(snap => setLiveEventsCount(snap.size))
+      .catch(() => {});
+  }, [showDataManagementModal]);
+
+  // Categories list for Data Management Modal
+  const categoriesList: CategoryDataInfo[] = useMemo(() => [
+    {
+      key: "sessions",
+      name: "Visitor Telemetry Sessions",
+      description: "Live visitor tracking, geo intelligence and device sessions",
+      collectionName: "analytics_sessions",
+      count: liveSessionsCount,
+      icon: Eye,
+      color: "bg-emerald-500"
+    },
+    {
+      key: "events",
+      name: "Telemetry Events Stream",
+      description: "Live user interaction and navigation telemetry logs",
+      collectionName: "analytics_events",
+      count: liveEventsCount,
+      icon: Activity,
+      color: "bg-blue-500"
+    },
+    {
+      key: "activity",
+      name: "Unified Activity Feed",
+      description: "Aggregated live stream feed of recent platform transactions",
+      count: combinedRealEvents.length,
+      icon: Flame,
+      color: "bg-orange-500"
+    },
+    {
+      key: "smm",
+      name: "SMM Orders Analytics",
+      description: "Social media marketing orders and service history",
+      collectionName: "smm_orders",
+      count: smmOrders.length,
+      icon: ShoppingBag,
+      color: "bg-amber-500"
+    },
+    {
+      key: "sms",
+      name: "Virtual SMS Activations",
+      description: "SMS phone number activation orders and history",
+      collectionName: "orders",
+      count: orders.length,
+      icon: Smartphone,
+      color: "bg-emerald-600"
+    },
+    {
+      key: "subscriptions",
+      name: "Digital Subscription Orders",
+      description: "Subscription orders, licenses and recurring memberships",
+      collectionName: "subscription_orders",
+      count: subscriptionOrders.length,
+      icon: Crown,
+      color: "bg-indigo-600"
+    },
+    {
+      key: "deposits",
+      name: "Deposit Requests Log",
+      description: "Cash deposits, TRX logs and manual payment receipts",
+      collectionName: "deposit_requests",
+      count: depositRequests.length,
+      icon: DollarSign,
+      color: "bg-teal-600"
+    },
+    {
+      key: "reviews",
+      name: "Customer Reviews & Ratings",
+      description: "Customer testimonials, feedback and ratings data",
+      collectionName: "reviews",
+      count: reviews.length,
+      icon: Star,
+      color: "bg-purple-600"
+    }
+  ], [smmOrders.length, orders.length, subscriptionOrders.length, depositRequests.length, reviews.length, combinedRealEvents.length, liveSessionsCount, liveEventsCount]);
+
+  // Execute Clear / Reset All Data
+  const handleClearAllAnalyticsData = async () => {
+    try {
+      // 1. Wipe Firestore analytics_sessions
+      try {
+        const sessSnap = await getDocs(query(collection(db, "analytics_sessions"), limit(500)));
+        if (!sessSnap.empty) {
+          const batch = writeBatch(db);
+          sessSnap.forEach(d => batch.delete(d.ref));
+          await batch.commit();
+        }
+      } catch (e) {
+        console.warn("Could not wipe analytics_sessions:", e);
+      }
+
+      // 2. Wipe Firestore analytics_events
+      try {
+        const evtSnap = await getDocs(query(collection(db, "analytics_events"), limit(500)));
+        if (!evtSnap.empty) {
+          const batch = writeBatch(db);
+          evtSnap.forEach(d => batch.delete(d.ref));
+          await batch.commit();
+        }
+      } catch (e) {
+        console.warn("Could not wipe analytics_events:", e);
+      }
+
+      // 3. Mark all current items as deleted in view state
+      setDeletedSmmIds(prev => {
+        const next = new Set(prev);
+        smmOrders.forEach(o => next.add(o.id));
+        return next;
+      });
+      setDeletedSmsIds(prev => {
+        const next = new Set(prev);
+        orders.forEach(o => next.add(o.id));
+        return next;
+      });
+      setDeletedSubOrderIds(prev => {
+        const next = new Set(prev);
+        subscriptionOrders.forEach(s => next.add(s.id));
+        return next;
+      });
+      setDeletedDepositIds(prev => {
+        const next = new Set(prev);
+        depositRequests.forEach(d => next.add(d.id));
+        return next;
+      });
+      setDeletedReviewIds(prev => {
+        const next = new Set(prev);
+        reviews.forEach(r => next.add(r.id));
+        return next;
+      });
+      setDeletedActivityIds(prev => {
+        const next = new Set(prev);
+        combinedRealEvents.forEach(e => next.add(e.id));
+        return next;
+      });
+
+      // Clear all active selection sets
+      setSelectedSmmIds(new Set());
+      setSelectedSmsIds(new Set());
+      setSelectedSubOrderIds(new Set());
+      setSelectedDepositIds(new Set());
+      setSelectedReviewIds(new Set());
+      setSelectedUserIds(new Set());
+      setSelectedActivityIds(new Set());
+      setLiveSessionsCount(0);
+      setLiveEventsCount(0);
+
+      toast.success("All analytics data and telemetry have been cleared!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to clear analytics data");
+    }
+  };
+
+  // Execute Selective Category Purge
+  const handleClearCategories = async (keys: string[]) => {
+    let clearedRecords = 0;
+    try {
+      for (const key of keys) {
+        if (key === "sessions") {
+          try {
+            const snap = await getDocs(query(collection(db, "analytics_sessions"), limit(500)));
+            if (!snap.empty) {
+              const batch = writeBatch(db);
+              snap.forEach(d => batch.delete(d.ref));
+              await batch.commit();
+              clearedRecords += snap.size;
+            }
+            setLiveSessionsCount(0);
+          } catch (e) {
+            console.warn(e);
+          }
+        }
+        if (key === "events") {
+          try {
+            const snap = await getDocs(query(collection(db, "analytics_events"), limit(500)));
+            if (!snap.empty) {
+              const batch = writeBatch(db);
+              snap.forEach(d => batch.delete(d.ref));
+              await batch.commit();
+              clearedRecords += snap.size;
+            }
+            setLiveEventsCount(0);
+          } catch (e) {
+            console.warn(e);
+          }
+        }
+        if (key === "smm") {
+          const ids = smmOrders.map(o => o.id);
+          await executeBatchDeleteDocs("smm_orders", ids);
+          setDeletedSmmIds(prev => {
+            const next = new Set(prev);
+            ids.forEach(id => next.add(id));
+            return next;
+          });
+          setSelectedSmmIds(new Set());
+          clearedRecords += ids.length;
+        }
+        if (key === "sms") {
+          const ids = orders.map(o => o.id);
+          await executeBatchDeleteDocs("orders", ids);
+          setDeletedSmsIds(prev => {
+            const next = new Set(prev);
+            ids.forEach(id => next.add(id));
+            return next;
+          });
+          setSelectedSmsIds(new Set());
+          clearedRecords += ids.length;
+        }
+        if (key === "subscriptions") {
+          const ids = subscriptionOrders.map(s => s.id);
+          await executeBatchDeleteDocs("subscription_orders", ids);
+          setDeletedSubOrderIds(prev => {
+            const next = new Set(prev);
+            ids.forEach(id => next.add(id));
+            return next;
+          });
+          setSelectedSubOrderIds(new Set());
+          clearedRecords += ids.length;
+        }
+        if (key === "deposits") {
+          const ids = depositRequests.map(d => d.id);
+          await executeBatchDeleteDocs("deposit_requests", ids);
+          setDeletedDepositIds(prev => {
+            const next = new Set(prev);
+            ids.forEach(id => next.add(id));
+            return next;
+          });
+          setSelectedDepositIds(new Set());
+          clearedRecords += ids.length;
+        }
+        if (key === "reviews") {
+          const ids = reviews.map(r => r.id);
+          await executeBatchDeleteDocs("reviews", ids);
+          setDeletedReviewIds(prev => {
+            const next = new Set(prev);
+            ids.forEach(id => next.add(id));
+            return next;
+          });
+          setSelectedReviewIds(new Set());
+          clearedRecords += ids.length;
+        }
+        if (key === "activity") {
+          const ids = combinedRealEvents.map(e => e.id);
+          setDeletedActivityIds(prev => {
+            const next = new Set(prev);
+            ids.forEach(id => next.add(id));
+            return next;
+          });
+          setSelectedActivityIds(new Set());
+          clearedRecords += ids.length;
+        }
+      }
+      toast.success(`Purged data for ${keys.length} categories (${clearedRecords} records removed)`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to purge some categories");
+    }
+  };
+
   // Donut Chart Data Split
   const serviceDistributionData = useMemo(() => {
     const smmVal = totalSmmOrdersCount;
@@ -1317,6 +1735,16 @@ interface TelemetryItem {
           >
             <RefreshCw className={`h-3 w-3 ${isRefreshing ? "animate-spin text-orange-600" : "text-slate-600"}`} />
             <span>Sync</span>
+          </button>
+
+          {/* Clear / Reset All Data & Category Purge Button */}
+          <button
+            onClick={() => setShowDataManagementModal(true)}
+            className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-extrabold px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+            title="Clear or Reset Analytics Data"
+          >
+            <RotateCcw className="h-3.5 w-3.5 text-rose-600" />
+            <span>Clear / Reset Data</span>
           </button>
 
           {/* Professional PDF Executive Report Trigger */}
@@ -2227,10 +2655,27 @@ interface TelemetryItem {
             {/* SMM Orders Table */}
             {(orderTypeFilter === "ALL" || orderTypeFilter === "SMM") && (
               <div className="space-y-2">
-                <h4 className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-orange-500"></span>
-                  SMM Panel Orders ({filteredSmmOrders.length})
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-orange-500"></span>
+                    SMM Panel Orders ({filteredSmmOrders.length})
+                  </h4>
+                  {selectedSmmIds.size > 0 && (
+                    <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-200">
+                      {selectedSmmIds.size} selected
+                    </span>
+                  )}
+                </div>
+
+                <AnalyticsBatchActionBar
+                  selectedCount={selectedSmmIds.size}
+                  totalVisibleCount={filteredSmmOrders.length}
+                  itemName="SMM orders"
+                  onSelectAllVisible={() => setSelectedSmmIds(new Set(filteredSmmOrders.map(o => o.id)))}
+                  onDeselectAll={() => setSelectedSmmIds(new Set())}
+                  onDeleteSelected={handleBatchDeleteSmmOrders}
+                  isAllSelected={filteredSmmOrders.length > 0 && filteredSmmOrders.every(o => selectedSmmIds.has(o.id))}
+                />
 
                 {filteredSmmOrders.length === 0 ? (
                   <div className="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">
@@ -2241,6 +2686,21 @@ interface TelemetryItem {
                     <table className="w-full text-left text-[11px]">
                       <thead>
                         <tr className="bg-slate-50 text-slate-500 uppercase font-extrabold border-b border-slate-200">
+                          <th className="p-2 w-8 text-center">
+                            <input
+                              type="checkbox"
+                              checked={filteredSmmOrders.length > 0 && filteredSmmOrders.every(o => selectedSmmIds.has(o.id))}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedSmmIds(new Set(filteredSmmOrders.map(o => o.id)));
+                                } else {
+                                  setSelectedSmmIds(new Set());
+                                }
+                              }}
+                              className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                              title="Select all visible SMM orders"
+                            />
+                          </th>
                           <th className="p-2">ID</th>
                           <th className="p-2">Service</th>
                           <th className="p-2">User Email / Handle</th>
@@ -2251,7 +2711,22 @@ interface TelemetryItem {
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-medium">
                         {filteredSmmOrders.map((o) => (
-                          <tr key={o.id} className="hover:bg-slate-50 transition">
+                          <tr key={o.id} className={`hover:bg-slate-50 transition ${selectedSmmIds.has(o.id) ? "bg-orange-50/40" : ""}`}>
+                            <td className="p-2 w-8 text-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedSmmIds.has(o.id)}
+                                onChange={() => {
+                                  setSelectedSmmIds(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(o.id)) next.delete(o.id);
+                                    else next.add(o.id);
+                                    return next;
+                                  });
+                                }}
+                                className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                              />
+                            </td>
                             <td className="p-2 font-mono font-bold text-slate-900">#{o.id}</td>
                             <td className="p-2 font-bold text-slate-800 truncate max-w-[180px]">{o.serviceName || "Social Service"}</td>
                             <td className="p-2 text-slate-600 truncate max-w-[140px]">{(o as any).userEmail || o.username || "Customer"}</td>
@@ -2287,10 +2762,28 @@ interface TelemetryItem {
             {/* SMS Activations Table */}
             {(orderTypeFilter === "ALL" || orderTypeFilter === "SMS") && (
               <div className="space-y-2 pt-2">
-                <h4 className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-                  Virtual SMS Activations ({filteredSmsOrders.length})
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                    Virtual SMS Activations ({filteredSmsOrders.length})
+                  </h4>
+                  {selectedSmsIds.size > 0 && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      {selectedSmsIds.size} selected
+                    </span>
+                  )}
+                </div>
+
+                <AnalyticsBatchActionBar
+                  selectedCount={selectedSmsIds.size}
+                  totalVisibleCount={filteredSmsOrders.length}
+                  itemName="SMS orders"
+                  onSelectAllVisible={() => setSelectedSmsIds(new Set(filteredSmsOrders.map(o => o.id)))}
+                  onDeselectAll={() => setSelectedSmsIds(new Set())}
+                  onDeleteSelected={handleBatchDeleteSmsOrders}
+                  isAllSelected={filteredSmsOrders.length > 0 && filteredSmsOrders.every(o => selectedSmsIds.has(o.id))}
+                />
+
                 {filteredSmsOrders.length === 0 ? (
                   <div className="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">
                     No SMS virtual number activations recorded.
@@ -2300,6 +2793,21 @@ interface TelemetryItem {
                     <table className="w-full text-left text-[11px]">
                       <thead>
                         <tr className="bg-slate-50 text-slate-500 uppercase font-extrabold border-b border-slate-200">
+                          <th className="p-2 w-8 text-center">
+                            <input
+                              type="checkbox"
+                              checked={filteredSmsOrders.length > 0 && filteredSmsOrders.every(o => selectedSmsIds.has(o.id))}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedSmsIds(new Set(filteredSmsOrders.map(o => o.id)));
+                                } else {
+                                  setSelectedSmsIds(new Set());
+                                }
+                              }}
+                              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                              title="Select all visible SMS orders"
+                            />
+                          </th>
                           <th className="p-2">ID</th>
                           <th className="p-2">Service / Country</th>
                           <th className="p-2">Phone Allocated</th>
@@ -2310,7 +2818,22 @@ interface TelemetryItem {
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-medium">
                         {filteredSmsOrders.map((o) => (
-                          <tr key={o.id} className="hover:bg-slate-50 transition">
+                          <tr key={o.id} className={`hover:bg-slate-50 transition ${selectedSmsIds.has(o.id) ? "bg-emerald-50/40" : ""}`}>
+                            <td className="p-2 w-8 text-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedSmsIds.has(o.id)}
+                                onChange={() => {
+                                  setSelectedSmsIds(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(o.id)) next.delete(o.id);
+                                    else next.add(o.id);
+                                    return next;
+                                  });
+                                }}
+                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                              />
+                            </td>
                             <td className="p-2 font-mono font-bold text-slate-900">#{o.id}</td>
                             <td className="p-2 font-bold text-slate-800">{o.product || (o as any).service || "OTP Service"} ({o.country || "Global"})</td>
                             <td className="p-2 font-mono text-slate-700">{o.phone || (o as any).phoneNumber || "Allocating..."}</td>
@@ -2346,10 +2869,28 @@ interface TelemetryItem {
             {/* Subscriptions Orders Table */}
             {(orderTypeFilter === "ALL" || orderTypeFilter === "SUBSCRIPTION") && (
               <div className="space-y-2 pt-2">
-                <h4 className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-indigo-500"></span>
-                  Digital Subscription Orders ({filteredSubOrders.length})
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-indigo-500"></span>
+                    Digital Subscription Orders ({filteredSubOrders.length})
+                  </h4>
+                  {selectedSubOrderIds.size > 0 && (
+                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                      {selectedSubOrderIds.size} selected
+                    </span>
+                  )}
+                </div>
+
+                <AnalyticsBatchActionBar
+                  selectedCount={selectedSubOrderIds.size}
+                  totalVisibleCount={filteredSubOrders.length}
+                  itemName="subscription orders"
+                  onSelectAllVisible={() => setSelectedSubOrderIds(new Set(filteredSubOrders.map(s => s.id)))}
+                  onDeselectAll={() => setSelectedSubOrderIds(new Set())}
+                  onDeleteSelected={handleBatchDeleteSubOrders}
+                  isAllSelected={filteredSubOrders.length > 0 && filteredSubOrders.every(s => selectedSubOrderIds.has(s.id))}
+                />
+
                 {filteredSubOrders.length === 0 ? (
                   <div className="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">
                     No digital subscription orders recorded.
@@ -2359,6 +2900,21 @@ interface TelemetryItem {
                     <table className="w-full text-left text-[11px]">
                       <thead>
                         <tr className="bg-slate-50 text-slate-500 uppercase font-extrabold border-b border-slate-200">
+                          <th className="p-2 w-8 text-center">
+                            <input
+                              type="checkbox"
+                              checked={filteredSubOrders.length > 0 && filteredSubOrders.every(s => selectedSubOrderIds.has(s.id))}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedSubOrderIds(new Set(filteredSubOrders.map(s => s.id)));
+                                } else {
+                                  setSelectedSubOrderIds(new Set());
+                                }
+                              }}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                              title="Select all visible subscription orders"
+                            />
+                          </th>
                           <th className="p-2">Order ID</th>
                           <th className="p-2">Subscription Product</th>
                           <th className="p-2">User Handle / Email</th>
@@ -2369,7 +2925,22 @@ interface TelemetryItem {
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-medium">
                         {filteredSubOrders.map((s) => (
-                          <tr key={s.id} className="hover:bg-slate-50 transition">
+                          <tr key={s.id} className={`hover:bg-slate-50 transition ${selectedSubOrderIds.has(s.id) ? "bg-indigo-50/40" : ""}`}>
+                            <td className="p-2 w-8 text-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedSubOrderIds.has(s.id)}
+                                onChange={() => {
+                                  setSelectedSubOrderIds(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(s.id)) next.delete(s.id);
+                                    else next.add(s.id);
+                                    return next;
+                                  });
+                                }}
+                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                              />
+                            </td>
                             <td className="p-2 font-mono font-bold text-indigo-700">#{s.id.slice(0, 8)}</td>
                             <td className="p-2 font-bold text-slate-900">{s.productName || (s as any).productTitle || "Digital Service"}</td>
                             <td className="p-2 text-slate-600 truncate max-w-[140px]">{s.userEmail || s.username || "User"}</td>
@@ -2498,6 +3069,16 @@ interface TelemetryItem {
               </div>
             </div>
 
+            <AnalyticsBatchActionBar
+              selectedCount={selectedSubOrderIds.size}
+              totalVisibleCount={filteredSubOrders.length}
+              itemName="subscription orders"
+              onSelectAllVisible={() => setSelectedSubOrderIds(new Set(filteredSubOrders.map(s => s.id)))}
+              onDeselectAll={() => setSelectedSubOrderIds(new Set())}
+              onDeleteSelected={handleBatchDeleteSubOrders}
+              isAllSelected={filteredSubOrders.length > 0 && filteredSubOrders.every(s => selectedSubOrderIds.has(s.id))}
+            />
+
             {filteredSubOrders.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">
                 No subscription orders found matching your search.
@@ -2507,6 +3088,21 @@ interface TelemetryItem {
                 <table className="w-full text-left text-[11px]">
                   <thead>
                     <tr className="bg-slate-50 text-slate-500 uppercase font-extrabold border-b border-slate-200">
+                      <th className="p-2.5 w-8 text-center">
+                        <input
+                          type="checkbox"
+                          checked={filteredSubOrders.length > 0 && filteredSubOrders.every(s => selectedSubOrderIds.has(s.id))}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedSubOrderIds(new Set(filteredSubOrders.map(s => s.id)));
+                            } else {
+                              setSelectedSubOrderIds(new Set());
+                            }
+                          }}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          title="Select all visible subscription orders"
+                        />
+                      </th>
                       <th className="p-2.5">ID</th>
                       <th className="p-2.5">Subscription Product</th>
                       <th className="p-2.5">User Handle / Email</th>
@@ -2518,7 +3114,22 @@ interface TelemetryItem {
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
                     {filteredSubOrders.map((s) => (
-                      <tr key={s.id} className="hover:bg-slate-50 transition">
+                      <tr key={s.id} className={`hover:bg-slate-50 transition ${selectedSubOrderIds.has(s.id) ? "bg-indigo-50/40" : ""}`}>
+                        <td className="p-2.5 w-8 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedSubOrderIds.has(s.id)}
+                            onChange={() => {
+                              setSelectedSubOrderIds(prev => {
+                                const next = new Set(prev);
+                                if (next.has(s.id)) next.delete(s.id);
+                                else next.add(s.id);
+                                return next;
+                              });
+                            }}
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          />
+                        </td>
                         <td className="p-2.5 font-mono font-bold text-indigo-700">#{s.id.slice(0, 8)}</td>
                         <td className="p-2.5 font-bold text-slate-900">{s.productName || (s as any).productTitle || "Digital Service"}</td>
                         <td className="p-2.5 text-slate-600 truncate max-w-[160px]">{s.userEmail || s.username || "User"}</td>
@@ -2644,6 +3255,16 @@ interface TelemetryItem {
               </div>
             </div>
 
+            <AnalyticsBatchActionBar
+              selectedCount={selectedReviewIds.size}
+              totalVisibleCount={filteredReviews.length}
+              itemName="reviews"
+              onSelectAllVisible={() => setSelectedReviewIds(new Set(filteredReviews.map(r => r.id)))}
+              onDeselectAll={() => setSelectedReviewIds(new Set())}
+              onDeleteSelected={handleBatchDeleteReviews}
+              isAllSelected={filteredReviews.length > 0 && filteredReviews.every(r => selectedReviewIds.has(r.id))}
+            />
+
             {filteredReviews.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">
                 No reviews found matching your search filters.
@@ -2651,10 +3272,24 @@ interface TelemetryItem {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {filteredReviews.map((r) => (
-                  <div key={r.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-amber-200 transition space-y-2 flex flex-col justify-between">
+                  <div key={r.id} className={`p-3.5 rounded-xl border transition space-y-2 flex flex-col justify-between ${selectedReviewIds.has(r.id) ? "border-amber-400 bg-amber-50/50" : "border-slate-200 bg-slate-50 hover:bg-white hover:border-amber-200"}`}>
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedReviewIds.has(r.id)}
+                            onChange={() => {
+                              setSelectedReviewIds(prev => {
+                                const next = new Set(prev);
+                                if (next.has(r.id)) next.delete(r.id);
+                                else next.add(r.id);
+                                return next;
+                              });
+                            }}
+                            className="rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                            title="Select review"
+                          />
                           <img 
                             src={r.userAvatar || "https://cdn.phototourl.com/free/2026-07-26-0157bb7a-eeca-402b-af8d-01c8a3f032d9.png"} 
                             alt={r.username}
@@ -2834,10 +3469,35 @@ interface TelemetryItem {
             </div>
           </div>
 
+          <AnalyticsBatchActionBar
+            selectedCount={selectedUserIds.size}
+            totalVisibleCount={filteredUsers.length}
+            itemName="user accounts"
+            onSelectAllVisible={() => setSelectedUserIds(new Set(filteredUsers.map(u => u.id)))}
+            onDeselectAll={() => setSelectedUserIds(new Set())}
+            onDeleteSelected={handleBatchDeleteUsers}
+            isAllSelected={filteredUsers.length > 0 && filteredUsers.every(u => selectedUserIds.has(u.id))}
+          />
+
           <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="w-full text-left text-[11px]">
               <thead>
                 <tr className="bg-slate-50 text-slate-500 uppercase font-extrabold border-b border-slate-200">
+                  <th className="p-2.5 w-8 text-center">
+                    <input
+                      type="checkbox"
+                      checked={filteredUsers.length > 0 && filteredUsers.every(u => selectedUserIds.has(u.id))}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedUserIds(new Set(filteredUsers.map(u => u.id)));
+                        } else {
+                          setSelectedUserIds(new Set());
+                        }
+                      }}
+                      className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                      title="Select all visible users"
+                    />
+                  </th>
                   <th className="p-2.5">User</th>
                   <th className="p-2.5">Wallet Balance</th>
                   <th className="p-2.5">Loyalty Points</th>
@@ -2847,7 +3507,22 @@ interface TelemetryItem {
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-50 transition">
+                  <tr key={u.id} className={`hover:bg-slate-50 transition ${selectedUserIds.has(u.id) ? "bg-orange-50/40" : ""}`}>
+                    <td className="p-2.5 w-8 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedUserIds.has(u.id)}
+                        onChange={() => {
+                          setSelectedUserIds(prev => {
+                            const next = new Set(prev);
+                            if (next.has(u.id)) next.delete(u.id);
+                            else next.add(u.id);
+                            return next;
+                          });
+                        }}
+                        className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                      />
+                    </td>
                     <td className="p-2.5">
                       <div className="font-bold text-slate-900">@{u.username || u.id.slice(0, 8)}</div>
                       <div className="text-[10px] text-slate-400 font-mono">{u.email}</div>
@@ -2908,10 +3583,35 @@ interface TelemetryItem {
             </div>
           </div>
 
+          <AnalyticsBatchActionBar
+            selectedCount={selectedDepositIds.size}
+            totalVisibleCount={filteredDeposits.length}
+            itemName="deposit requests"
+            onSelectAllVisible={() => setSelectedDepositIds(new Set(filteredDeposits.map(d => d.id)))}
+            onDeselectAll={() => setSelectedDepositIds(new Set())}
+            onDeleteSelected={handleBatchDeleteDeposits}
+            isAllSelected={filteredDeposits.length > 0 && filteredDeposits.every(d => selectedDepositIds.has(d.id))}
+          />
+
           <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="w-full text-left text-[11px]">
               <thead>
                 <tr className="bg-slate-50 text-slate-500 uppercase font-extrabold border-b border-slate-200">
+                  <th className="p-2.5 w-8 text-center">
+                    <input
+                      type="checkbox"
+                      checked={filteredDeposits.length > 0 && filteredDeposits.every(d => selectedDepositIds.has(d.id))}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedDepositIds(new Set(filteredDeposits.map(d => d.id)));
+                        } else {
+                          setSelectedDepositIds(new Set());
+                        }
+                      }}
+                      className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                      title="Select all visible deposits"
+                    />
+                  </th>
                   <th className="p-2.5">Method</th>
                   <th className="p-2.5">Trx ID / User</th>
                   <th className="p-2.5">Amount (PKR)</th>
@@ -2921,7 +3621,22 @@ interface TelemetryItem {
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredDeposits.map((d) => (
-                  <tr key={d.id} className="hover:bg-slate-50 transition">
+                  <tr key={d.id} className={`hover:bg-slate-50 transition ${selectedDepositIds.has(d.id) ? "bg-emerald-50/40" : ""}`}>
+                    <td className="p-2.5 w-8 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedDepositIds.has(d.id)}
+                        onChange={() => {
+                          setSelectedDepositIds(prev => {
+                            const next = new Set(prev);
+                            if (next.has(d.id)) next.delete(d.id);
+                            else next.add(d.id);
+                            return next;
+                          });
+                        }}
+                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                      />
+                    </td>
                     <td className="p-2.5 font-bold uppercase text-slate-800">{d.method || "Cash"}</td>
                     <td className="p-2.5">
                       <div className="font-mono font-bold text-slate-900">{d.txId || (d as any).trxId || "N/A"}</div>
@@ -2968,22 +3683,48 @@ interface TelemetryItem {
               <p className="text-[11px] text-slate-500">Realtime events across SMM, SMS, Subscriptions, Deposits & Reviews</p>
             </div>
 
-            <button
-              onClick={handleClearAllActivity}
-              className="text-[11px] font-bold text-slate-500 hover:text-red-600 flex items-center gap-1 cursor-pointer bg-slate-50 hover:bg-red-50 px-2.5 py-1 rounded-lg border border-slate-200"
-            >
-              <Trash2 className="h-3 w-3" />
-              <span>Clear Activity</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleClearAllActivity}
+                className="text-[11px] font-bold text-slate-500 hover:text-red-600 flex items-center gap-1 cursor-pointer bg-slate-50 hover:bg-red-50 px-2.5 py-1 rounded-lg border border-slate-200"
+              >
+                <Trash2 className="h-3 w-3" />
+                <span>Clear All Feed</span>
+              </button>
+            </div>
           </div>
+
+          <AnalyticsBatchActionBar
+            selectedCount={selectedActivityIds.size}
+            totalVisibleCount={combinedRealEvents.length}
+            itemName="activity events"
+            onSelectAllVisible={() => setSelectedActivityIds(new Set(combinedRealEvents.map(e => e.id)))}
+            onDeselectAll={() => setSelectedActivityIds(new Set())}
+            onDeleteSelected={handleBatchDeleteActivities}
+            isAllSelected={combinedRealEvents.length > 0 && combinedRealEvents.every(e => selectedActivityIds.has(e.id))}
+          />
 
           <div className="space-y-2">
             {combinedRealEvents.length === 0 ? (
               <p className="text-xs text-slate-400 text-center py-8">No recent activity items.</p>
             ) : (
               combinedRealEvents.map((evt) => (
-                <div key={evt.id} className="p-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-white transition flex items-center justify-between text-xs">
+                <div key={evt.id} className={`p-2.5 rounded-lg border transition flex items-center justify-between text-xs ${selectedActivityIds.has(evt.id) ? "border-orange-400 bg-orange-50/50" : "border-slate-200 bg-slate-50 hover:bg-white"}`}>
                   <div className="flex items-center gap-2.5 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={selectedActivityIds.has(evt.id)}
+                      onChange={() => {
+                        setSelectedActivityIds(prev => {
+                          const next = new Set(prev);
+                          if (next.has(evt.id)) next.delete(evt.id);
+                          else next.add(evt.id);
+                          return next;
+                        });
+                      }}
+                      className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                      title="Select event"
+                    />
                     <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase shrink-0 ${
                       evt.type === "smm" ? "bg-orange-100 text-orange-800" :
                       evt.type === "sms" ? "bg-emerald-100 text-emerald-800" :
@@ -3006,7 +3747,8 @@ interface TelemetryItem {
                     </div>
                     <button
                       onClick={() => handleDeleteActivity(evt.id)}
-                      className="text-slate-400 hover:text-red-600 p-1"
+                      className="text-slate-400 hover:text-red-600 p-1 cursor-pointer"
+                      title="Dismiss"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -3552,6 +4294,84 @@ interface TelemetryItem {
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Analytics Data Management & Reset Modal */}
+      <AnalyticsDataManagementModal
+        isOpen={showDataManagementModal}
+        onClose={() => setShowDataManagementModal(false)}
+        categories={categoriesList}
+        onClearAll={handleClearAllAnalyticsData}
+        onClearCategories={handleClearCategories}
+      />
+
+      {/* Quick Action Command Palette */}
+      {showCommandPalette && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2">
+                <Command className="h-4 w-4 text-orange-600" />
+                <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Analytics Quick Actions</span>
+              </div>
+              <button
+                onClick={() => setShowCommandPalette(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-2 space-y-1">
+              <button
+                onClick={() => {
+                  setShowCommandPalette(false);
+                  setShowDataManagementModal(true);
+                }}
+                className="w-full text-left p-2.5 rounded-xl hover:bg-rose-50 transition flex items-center gap-3 text-xs font-bold text-rose-700 cursor-pointer group"
+              >
+                <div className="p-2 rounded-lg bg-rose-100 text-rose-700 group-hover:bg-rose-600 group-hover:text-white transition">
+                  <RotateCcw className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-slate-900 font-extrabold">Clear / Reset All Analytics Data</p>
+                  <p className="text-[10px] text-slate-500 font-normal">Purge sessions, event streams or selective service tables</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowCommandPalette(false);
+                  handleOpenPdfReport();
+                }}
+                className="w-full text-left p-2.5 rounded-xl hover:bg-orange-50 transition flex items-center gap-3 text-xs font-bold text-orange-700 cursor-pointer group"
+              >
+                <div className="p-2 rounded-lg bg-orange-100 text-orange-700 group-hover:bg-orange-600 group-hover:text-white transition">
+                  <FileText className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-slate-900 font-extrabold">Executive PDF Audit Report</p>
+                  <p className="text-[10px] text-slate-500 font-normal">Generate branded printable PDF with metrics and breakdown</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowCommandPalette(false);
+                  handleRefresh();
+                }}
+                className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 transition flex items-center gap-3 text-xs font-bold text-slate-700 cursor-pointer group"
+              >
+                <div className="p-2 rounded-lg bg-slate-200 text-slate-700 group-hover:bg-slate-800 group-hover:text-white transition">
+                  <RefreshCw className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-slate-900 font-extrabold">Sync & Refresh Realtime Data</p>
+                  <p className="text-[10px] text-slate-500 font-normal">Re-query all active Firestore collections and calculate metrics</p>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       )}
