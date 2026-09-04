@@ -355,6 +355,7 @@ export default function App() {
   const [isCatalogGuideMinimized, setIsCatalogGuideMinimized] = useState(true);
 
   // --- NEW CASH DEPOSIT & USER LOGIN ENGINE STATES ---
+  const [isAuthInitializing, setIsAuthInitializing] = useState(true);
   const [registeredUsers, setRegisteredUsers] = useState<UserAccount[]>([]);
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
     try {
@@ -373,10 +374,7 @@ export default function App() {
     if (currentUser) {
       localStorage.setItem("zerox_user_account", JSON.stringify(currentUser));
       localStorage.setItem("zerox_local_user_id", currentUser.id);
-    } else {
-      localStorage.removeItem("zerox_user_account");
-      localStorage.removeItem("zerox_local_user_id");
-      localStorage.removeItem("zerox_admin_session");
+      setShowAuthModal(false);
     }
   }, [currentUser]);
 
@@ -399,8 +397,8 @@ export default function App() {
           setAuthInitialIsSignUp(true);
         }
 
-        // Auto-open registration modal if user is not logged in
-        if (!currentUser && (isRegister || refCode)) {
+        // Auto-open registration modal if user is not logged in and auth finished initializing
+        if (!isAuthInitializing && !currentUser && (isRegister || refCode)) {
           setShowAuthModal(true);
           if (refCode) {
             toast.success(`🎁 Referral code @${refCode.trim()} applied! Please complete your registration below.`, {
@@ -414,7 +412,7 @@ export default function App() {
     } catch (e) {
       console.warn("Referral URL parse error:", e);
     }
-  }, [currentUser]);
+  }, [currentUser, isAuthInitializing]);
 
   // Compute Admin Status & Role for logged in user
   const userAdminInfo = React.useMemo(() => {
@@ -1036,17 +1034,21 @@ export default function App() {
   } | null>(null);
 
   
-  // Real-time Firestore sync listeners
+  // Real-time Firestore sync listeners & Auth state persistence
   useEffect(() => {
     let unsubUserDoc: (() => void) | null = null;
 
-    const setupUserDocListener = (activeUid: string) => {
+    const setupUserDocListener = (activeUid: string, firebaseUser?: any) => {
       if (unsubUserDoc) unsubUserDoc();
       const userDocRef = doc(db, "users", activeUid);
-      unsubUserDoc = onSnapshot(userDocRef, (userDoc) => {
+      unsubUserDoc = onSnapshot(userDocRef, async (userDoc) => {
         if (userDoc.exists()) {
           const data = userDoc.data();
-          if (data.status === "Blocked" || data.status === "Suspended") {
+          const isImmuneAdmin = (data.email || firebaseUser?.email || "").toLowerCase() === "zeroxnetworks@gmail.com" || 
+                                (data.email || firebaseUser?.email || "").toLowerCase() === "pandapals.manager@gmail.com" || 
+                                (data.email || firebaseUser?.email || "").toLowerCase() === "info.rayanmirza@gmail.com";
+
+          if (!isImmuneAdmin && (data.status === "Blocked" || data.status === "Suspended")) {
             localStorage.removeItem("zerox_user_account");
             localStorage.removeItem("zerox_local_user_id");
             setCurrentUser(null);
@@ -1071,6 +1073,44 @@ export default function App() {
           setCurrentUser(updatedAccount);
           localStorage.setItem("zerox_user_account", JSON.stringify(updatedAccount));
           localStorage.setItem("zerox_local_user_id", activeUid);
+        } else {
+          // User document not created yet in Firestore — auto-heal with authenticated Firebase User info
+          const fbUser = firebaseUser || auth.currentUser;
+          if (fbUser && fbUser.uid === activeUid) {
+            const userEmail = (fbUser.email || "").toLowerCase().trim();
+            const displayName = fbUser.displayName || "";
+            const defaultUsername = displayName.replace(/\s+/g, '') || userEmail.split("@")[0] || "User";
+            const newDoc = {
+              fullName: displayName || defaultUsername,
+              whatsappNumber: "",
+              email: userEmail,
+              username: defaultUsername,
+              usernameLower: defaultUsername.toLowerCase(),
+              balance: 0,
+              loyaltyPoints: 0,
+              isVerified: true,
+              status: "Active",
+              createdAt: new Date().toISOString()
+            };
+            setDoc(doc(db, "users", activeUid), newDoc, { merge: true }).catch(err => {
+              console.warn("Auto-heal user doc error:", err);
+            });
+            const healedAccount: UserAccount = {
+              id: activeUid,
+              username: defaultUsername,
+              email: userEmail,
+              balance: 0,
+              loyaltyPoints: 0,
+              createdAt: new Date().toISOString(),
+              fullName: displayName || defaultUsername,
+              whatsappNumber: "",
+              status: "Active",
+              isVerified: true
+            };
+            setCurrentUser(healedAccount);
+            localStorage.setItem("zerox_user_account", JSON.stringify(healedAccount));
+            localStorage.setItem("zerox_local_user_id", activeUid);
+          }
         }
       }, (err) => {
         if (err && err.message && err.message.includes("Quota limit exceeded")) {
@@ -1083,12 +1123,13 @@ export default function App() {
 
     const initialUid = auth.currentUser?.uid || localStorage.getItem("zerox_local_user_id");
     if (initialUid) {
-      setupUserDocListener(initialUid);
+      setupUserDocListener(initialUid, auth.currentUser);
     }
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setIsAuthInitializing(false);
       if (user) {
-        setupUserDocListener(user.uid);
+        setupUserDocListener(user.uid, user);
       } else {
         const storedUid = localStorage.getItem("zerox_local_user_id");
         if (storedUid) {
@@ -2112,6 +2153,8 @@ Code: ${newSmsText}` });
     setCurrentUser(user);
     localStorage.setItem("zerox_user_account", JSON.stringify(user));
     localStorage.setItem("zerox_local_user_id", user.id);
+    setShowAuthModal(false);
+    setAuthInitialIsSignUp(false);
     handleTabChange("dashboard");
   };
 

@@ -643,14 +643,26 @@ export default function UserAuth({
       const result = await signInWithPopup(auth, provider);
       
       const user = result.user;
+      if (!user) {
+        throw new Error("No user returned from Google Authentication.");
+      }
+
       const uid = user.uid;
       const userEmail = (user.email || "").toLowerCase().trim();
       const displayName = user.displayName || "";
       const defaultUsername = displayName.replace(/\s+/g, '') || userEmail.split("@")[0] || "User";
 
+      let data: any = null;
+
       // 1. Check if user document already exists at users/{uid}
-      let userDoc = await getDoc(doc(db, "users", uid));
-      let data = userDoc.exists() ? userDoc.data() : null;
+      try {
+        const userDoc = await getDoc(doc(db, "users", uid));
+        if (userDoc.exists()) {
+          data = userDoc.data();
+        }
+      } catch (docErr) {
+        console.warn("Direct doc fetch warning:", docErr);
+      }
 
       // 2. If not found by UID, check if this user previously registered with this email
       if (!data && userEmail) {
@@ -665,14 +677,14 @@ export default function UserAuth({
               ...data,
               isVerified: true,
               updatedAt: new Date().toISOString()
-            }, { merge: true });
+            }, { merge: true }).catch(err => console.warn("Failed merging existing user data to new UID:", err));
           }
         } catch (e) {
           console.warn("Email lookup fallback error on Google sign-in:", e);
         }
       }
 
-      // 3. If brand new user, create their document
+      // 3. If brand new user, create their document in Firestore
       if (!data) {
         const newDbUser = {
           fullName: displayName || defaultUsername,
@@ -686,10 +698,14 @@ export default function UserAuth({
           status: "Active",
           createdAt: new Date().toISOString()
         };
-        await setDoc(doc(db, "users", uid), newDbUser);
+        try {
+          await setDoc(doc(db, "users", uid), newDbUser, { merge: true });
+        } catch (setErr) {
+          console.warn("Failed to write new Google user to Firestore:", setErr);
+        }
         data = newDbUser;
         
-        // Trigger Admin Email Alert for New Google User Registration
+        // Trigger Admin Email Alert for New Google User Registration (background)
         fetch("/api/email/admin-new-user", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -712,7 +728,7 @@ export default function UserAuth({
           })
         }).catch(err => console.error("Admin alert failed", err));
 
-        // Trigger Welcome Email to User
+        // Trigger Welcome Email to User (background)
         fetch("/api/email/welcome", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -740,30 +756,32 @@ export default function UserAuth({
       localStorage.setItem("zerox_local_user_id", uid);
       const userAccount: UserAccount = {
         id: uid,
-        username: data.username || defaultUsername,
-        email: data.email || userEmail,
-        balance: data.balance || 0,
-        loyaltyPoints: data.loyaltyPoints || 0,
-        createdAt: data.createdAt || new Date().toISOString(),
-        fullName: data.fullName || displayName || defaultUsername,
-        whatsappNumber: data.whatsappNumber || "",
-        status: data.status || "Active"
+        username: data?.username || defaultUsername,
+        email: data?.email || userEmail,
+        balance: typeof data?.balance === "number" ? data.balance : 0,
+        loyaltyPoints: typeof data?.loyaltyPoints === "number" ? data.loyaltyPoints : 0,
+        createdAt: data?.createdAt || new Date().toISOString(),
+        fullName: data?.fullName || displayName || defaultUsername,
+        whatsappNumber: data?.whatsappNumber || "",
+        status: data?.status || "Active",
+        isVerified: true
       };
       localStorage.setItem("zerox_user_account", JSON.stringify(userAccount));
 
-      // Trigger Login Email Alert
+      // Trigger Login Email Alert in background
       fetch("/api/email/login-alert", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          toEmail: data.email || userEmail,
-          username: data.username || defaultUsername,
+          toEmail: data?.email || userEmail,
+          username: data?.username || defaultUsername,
           device: navigator.userAgent.split(')')[0].split('(')[1] || "Web Browser",
           ip: "Current Session",
           time: new Date().toLocaleString()
         })
       }).catch(err => console.error("Login alert failed", err));
 
+      // Complete authentication immediately
       onLogin(userAccount);
       if (onClose) onClose();
     } catch (err: any) {
