@@ -14,7 +14,12 @@ interface SmmOrdersMonitorProps {
 }
 
 export default function SmmOrdersMonitor({
-  cryptoRate, orders, users, services, onRefresh }: SmmOrdersMonitorProps) {
+  cryptoRate = 278,
+  orders = [],
+  users = [],
+  services = [],
+  onRefresh = () => {}
+}: SmmOrdersMonitorProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [isSyncing, setIsSyncing] = useState(false);
@@ -38,38 +43,43 @@ export default function SmmOrdersMonitor({
   };
 
   const handleGenerateInvoice = async (order: SmmOrder) => {
-    const user = users.find(u => u.id === order.userId);
-    const service = services.find(s => s.id === order.serviceId || s.providerServiceId === order.serviceId);
+    const user = (users || []).find(u => u?.id === order.userId);
+    const service = (services || []).find(s => s?.id === order.serviceId || s?.providerServiceId === order.serviceId);
     
     if (!user || !service) {
       toast.error("User or Service data missing for this order.");
       return;
     }
 
+    const orderIdStr = String(order.id || "ORDER");
+    const safeQty = Math.max(1, Number(order.quantity) || 1);
+    const safeCharge = Number(order.charge) || 0;
+    const safeRate = Number(cryptoRate) || 278;
+
     const invoiceData: InvoiceData = {
-      invoiceNumber: `INV-${order.id.substring(0, 8).toUpperCase()}`,
-      orderId: order.providerOrderId || order.id,
-      date: order.createdAt,
+      invoiceNumber: `INV-${orderIdStr.substring(0, 8).toUpperCase()}`,
+      orderId: String(order.providerOrderId || order.id || "N/A"),
+      date: order.createdAt || new Date().toISOString(),
       customerName: user.fullName || user.username || "Customer",
-      customerEmail: user.email,
-      customerPhone: user.phone || user.whatsappNumber,
-      status: String(order.status).toUpperCase(),
+      customerEmail: user.email || "",
+      customerPhone: user.phone || user.whatsappNumber || "",
+      status: String(order.status || "PENDING").toUpperCase(),
       paymentMethod: "Wallet Balance",
       items: [{
-        id: order.id,
-        title: service.name,
+        id: orderIdStr,
+        title: service.name || order.serviceName || "SMM Service",
         category: "SMM Order",
-        details: `Target: ${order.link} | Refill: ${service.refill ? 'Yes' : 'No'}`,
-        quantity: order.quantity,
-        unitPriceUsd: (order.charge / (cryptoRate || 278)) / order.quantity,
-        unitPricePkr: order.charge / order.quantity,
-        totalUsd: order.charge / (cryptoRate || 278),
-        totalPkr: order.charge
+        details: `Target: ${order.link || "N/A"} | Refill: ${service.refill ? 'Yes' : 'No'}`,
+        quantity: safeQty,
+        unitPriceUsd: (safeCharge / safeRate) / safeQty,
+        unitPricePkr: safeCharge / safeQty,
+        totalUsd: safeCharge / safeRate,
+        totalPkr: safeCharge
       }],
-      subtotalUsd: order.charge / (cryptoRate || 278),
-      subtotalPkr: order.charge,
-      grandTotalUsd: order.charge / (cryptoRate || 278),
-      grandTotalPkr: order.charge
+      subtotalUsd: safeCharge / safeRate,
+      subtotalPkr: safeCharge,
+      grandTotalUsd: safeCharge / safeRate,
+      grandTotalPkr: safeCharge
     };
 
     toast.loading("Generating Official PDF Receipt...", { id: "admin-pdf" });
@@ -108,15 +118,25 @@ The Zerox Network Team`);
     toast.success("Opened email client to send review request!");
   };
 
-  const filteredOrders = orders
-    .filter(o => filterStatus === "ALL" || (o.status || "PENDING").toUpperCase() === filterStatus)
-    .filter(o => 
-      o.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (o.providerOrderId && o.providerOrderId.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      o.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.serviceName.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const filteredOrders = (orders || [])
+    .filter(o => {
+      if (!o) return false;
+      return filterStatus === "ALL" || (o.status || "PENDING").toUpperCase() === filterStatus;
+    })
+    .filter(o => {
+      if (!o) return false;
+      const term = (searchTerm || "").toLowerCase();
+      const idMatch = String(o.id || "").toLowerCase().includes(term);
+      const provIdMatch = o.providerOrderId ? String(o.providerOrderId).toLowerCase().includes(term) : false;
+      const userMatch = String(o.username || "").toLowerCase().includes(term);
+      const serviceMatch = String(o.serviceName || "").toLowerCase().includes(term);
+      return idMatch || provIdMatch || userMatch || serviceMatch;
+    })
+    .sort((a, b) => {
+      const timeA = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
 
   return (
     <div className="space-y-6 animate-fade-in">

@@ -31,7 +31,7 @@ const QUICK_TOPICS: QuickTopic[] = [
 const FAQS = [
   {
     q: "Why didn't my virtual number receive the SMS code?",
-    a: "Verification delays depend heavily on the target service provider's global routing. If no code arrives within 15 minutes, your line is automatically cancelled and 100% of the funds are refunded back to your balance immediately."
+    a: "Verification delays depend on the target application's SMS routing. If no code arrives within 15 minutes, your line is automatically cancelled and 100% of the funds are refunded back to your balance immediately."
   },
   {
     q: "How long does it take to process manual Easypaisa/JazzCash deposits?",

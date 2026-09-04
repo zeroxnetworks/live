@@ -3,7 +3,7 @@ import {
   Database, Activity, RefreshCw, Plus, Edit, Trash2, CheckCircle2, 
   XCircle, Search, Sliders, AlertTriangle, TrendingUp, Settings2, 
   Layers, Copy, Check, Eye, EyeOff, Play, Square, Terminal, ArrowUpRight, 
-  Settings, Loader2, HelpCircle, Globe, ShoppingCart
+  Settings, Loader2, HelpCircle, Globe, ShoppingCart, Mail
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { db } from "../lib/firebase";
@@ -34,21 +34,27 @@ interface SmmManagementProps {
 }
 
 export default function SmmManagement({
-  smmProviders,
+  smmProviders = [],
   setSmmProviders,
-  smmServices,
+  smmServices = [],
   setSmmServices,
-  smmCategories,
+  smmCategories = [],
   setSmmCategories,
-  smmOrders,
+  smmOrders = [],
   setSmmOrders,
-  smmPriceRules,
+  smmPriceRules = [],
   setSmmPriceRules,
-  smmLogs,
+  smmLogs = [],
   setSmmLogs,
-  smmSettings,
+  smmSettings = {
+    autoSyncEnabled: true,
+    defaultProfitPercent: 20,
+    defaultFixedProfit: 0,
+    defaultRoundDecimals: 2,
+    maxQueueWorkers: 4
+  },
   setSmmSettings,
-  registeredUsers,
+  registeredUsers = [],
   onUpdateUserBalance
 }: SmmManagementProps) {
   // Navigation inside Plugin
@@ -413,18 +419,59 @@ export default function SmmManagement({
     }
   };
 
+  // Send Incident Diagnostic Report to Admin Email
+  const handleSendAdminIncidentReport = async () => {
+    const toastId = toast.loading("Sending SMM Diagnostic & Incident Report to admin email...");
+    try {
+      const res = await fetch("/api/smm/send-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetEmail: "pandapals.manager@gmail.com" })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success("Detailed report sent to pandapals.manager@gmail.com!", { id: toastId, duration: 6000 });
+        addLog("activity", "Admin Diagnostic Report Sent", "Dispatched comprehensive Module Load Issue diagnostic report to pandapals.manager@gmail.com.");
+      } else {
+        toast.error(data.error || "Failed to dispatch email report.", { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Network error while sending report.", { id: toastId });
+    }
+  };
+
   // Sync Action
   const handleSyncAll = async (providerOrId?: string | SmmProvider) => {
     setIsSyncing(true);
     const toastId = toast.loading(providerOrId ? "Connecting to SMM Provider API..." : "Connecting & syncing all SMM Provider catalogs...");
 
+    // If global sync requested, use server-side background engine with email report
+    if (!providerOrId) {
+      try {
+        const response = await fetch("/api/smm/sync-all", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sendEmail: true })
+        });
+        const resData = await response.json();
+        if (response.ok && resData.success) {
+          toast.success(`Sync Complete! Synced ${resData.totalServicesSynced} services across ${resData.totalCategoriesSynced} categories. Full report emailed to pandapals.manager@gmail.com!`, { id: toastId, duration: 7000 });
+          addLog("sync", "Full Catalog Synchronized & Emailed", `Synchronized ${resData.totalServicesSynced} services in ${resData.totalCategoriesSynced} categories. Report emailed.`);
+          setIsSyncing(false);
+          return;
+        }
+      } catch (err: any) {
+        console.warn("Server sync fallback:", err);
+      }
+    }
+
     let activeProviders: SmmProvider[] = [];
     if (typeof providerOrId === "object" && providerOrId !== null) {
       activeProviders = [providerOrId];
     } else if (typeof providerOrId === "string") {
-      activeProviders = smmProviders.filter(p => p.id === providerOrId);
+      activeProviders = (smmProviders || []).filter(p => p.id === providerOrId);
     } else {
-      activeProviders = smmProviders.filter(p => p.status === "ACTIVE");
+      activeProviders = (smmProviders || []).filter(p => p.status === "ACTIVE");
     }
 
     if (activeProviders.length === 0) {
@@ -703,40 +750,57 @@ export default function SmmManagement({
   };
 
   // Sync Log Filters
-  const filteredLogs = smmLogs.filter(log => {
+  const filteredLogs = (smmLogs || []).filter(log => {
+    if (!log) return false;
     const matchType = logTypeFilter === "all" || log.type === logTypeFilter;
-    const matchSearch = log.title.toLowerCase().includes(logSearchQuery.toLowerCase()) || 
-                        log.content.toLowerCase().includes(logSearchQuery.toLowerCase());
+    const logTitle = String(log.title || "").toLowerCase();
+    const logContent = String(log.content || "").toLowerCase();
+    const term = (logSearchQuery || "").toLowerCase();
+    const matchSearch = logTitle.includes(term) || logContent.includes(term);
     return matchType && matchSearch;
   });
 
   // Category list extraction
-  const categoriesList = Array.from(new Set(smmServices.map(s => s.category)));
+  const categoriesList = Array.from(
+    new Set(
+      (smmServices || [])
+        .map(s => s?.category)
+        .filter((cat): cat is string => Boolean(cat && typeof cat === "string"))
+    )
+  );
 
   // Filtered Services list
-  const filteredServices = smmServices.filter(s => {
+  const filteredServices = (smmServices || []).filter(s => {
+    if (!s) return false;
     const matchCat = selectedCategoryFilter === "all" || s.category === selectedCategoryFilter;
     const matchProv = selectedProviderFilter === "all" || s.providerId === selectedProviderFilter;
-    const matchSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                        s.id.toLowerCase().includes(searchQuery.toLowerCase());
+    const sName = String(s.name || "").toLowerCase();
+    const sId = String(s.id || "").toLowerCase();
+    const term = (searchQuery || "").toLowerCase();
+    const matchSearch = sName.includes(term) || sId.includes(term);
     return matchCat && matchProv && matchSearch;
   });
 
-  // Calculate Metrics
-  const totalProviders = smmProviders.length;
-  const activeProviders = smmProviders.filter(p => p.status === "ACTIVE").length;
-  const totalServices = smmServices.length;
-  const hiddenServices = smmServices.filter(s => s.isHidden).length;
-  const activeServices = smmServices.filter(s => s.isActive).length;
-  const failedApis = smmProviders.filter(p => p.healthStatus === "DOWN" || p.healthStatus === "DEGRADED").length;
-  const totalSmmOrders = smmOrders.length;
-  const ordersToday = smmOrders.filter(o => {
-    const orderDate = new Date(o.createdAt);
-    const today = new Date();
-    return orderDate.toDateString() === today.toDateString();
+  // Calculate Metrics safely
+  const totalProviders = (smmProviders || []).length;
+  const activeProviders = (smmProviders || []).filter(p => p?.status === "ACTIVE").length;
+  const totalServices = (smmServices || []).length;
+  const hiddenServices = (smmServices || []).filter(s => Boolean(s?.isHidden)).length;
+  const activeServices = (smmServices || []).filter(s => Boolean(s?.isActive)).length;
+  const failedApis = (smmProviders || []).filter(p => p?.healthStatus === "DOWN" || p?.healthStatus === "DEGRADED").length;
+  const totalSmmOrders = (smmOrders || []).length;
+  const ordersToday = (smmOrders || []).filter(o => {
+    if (!o?.createdAt) return false;
+    try {
+      const orderDate = new Date(o.createdAt);
+      const today = new Date();
+      return orderDate.toDateString() === today.toDateString();
+    } catch {
+      return false;
+    }
   }).length;
   
-  const providerBalanceSum = smmProviders.reduce((sum, p) => sum + (p.balance || 0), 0);
+  const providerBalanceSum = (smmProviders || []).reduce((sum, p) => sum + (Number(p?.balance) || 0), 0);
 
   return (
     <div id="smm-plugin-container" className="space-y-6">
@@ -763,7 +827,15 @@ export default function SmmManagement({
               Manage API Providers, Service Feeds, Auto Pricing rules, and order forwarding seamlessly.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleSendAdminIncidentReport()}
+              className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md"
+              title="Dispatches incident resolution & system diagnostic report to pandapals.manager@gmail.com"
+            >
+              <Mail className="h-4 w-4 text-emerald-400" />
+              <span>Email Report to Admin</span>
+            </button>
             <button
               onClick={() => handleSyncAll()}
               disabled={isSyncing}
@@ -938,16 +1010,13 @@ export default function SmmManagement({
               </div>
 
               <div className="space-y-3.5">
-                {smmProviders.map(prov => {
-                  const statusColors = {
-                    HEALTHY: "bg-emerald-500",
-                    DEGRADED: "bg-amber-500 animate-pulse",
-                    DOWN: "bg-red-500"
-                  };
+                {(smmProviders || []).map(prov => {
+                  const statusKey = String(prov.healthStatus || "HEALTHY").toUpperCase();
+                  const dotColor = statusKey === "DOWN" ? "bg-red-500" : statusKey === "DEGRADED" ? "bg-amber-500 animate-pulse" : "bg-emerald-500";
                   return (
                     <div key={prov.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-3.5 bg-slate-50/50 border border-slate-150 rounded-xl">
                       <div className="flex items-center gap-3">
-                        <span className={`h-2.5 w-2.5 rounded-full ${statusColors[prov.healthStatus || "HEALTHY"]}`}></span>
+                        <span className={`h-2.5 w-2.5 rounded-full ${dotColor}`}></span>
                         <div>
                           <h4 className="text-xs font-black text-slate-700 uppercase">{prov.name}</h4>
                           <p className="text-[9px] text-slate-400 font-bold font-mono uppercase mt-0.5">{prov.apiUrl}</p>
@@ -1075,9 +1144,9 @@ export default function SmmManagement({
                         </td>
                         <td className="py-4 px-4 font-mono text-[10px]">
                           <div className="flex items-center gap-1.5 text-slate-600">
-                            <span>••••••••••••{prov.apiKey.substring(prov.apiKey.length - 4)}</span>
+                            <span>••••••••••••{(prov.apiKey || "").slice(-4) || "••••"}</span>
                             <button
-                              onClick={() => handleCopyText(prov.apiKey)}
+                              onClick={() => handleCopyText(prov.apiKey || "")}
                               className="text-slate-400 hover:text-slate-600"
                               title="Copy API Key"
                             >
@@ -1086,14 +1155,14 @@ export default function SmmManagement({
                           </div>
                         </td>
                         <td className="py-4 px-4 text-[10px] font-mono text-slate-600">
-                          <div><span className="text-slate-400">SYNC:</span> Every {prov.syncInterval}</div>
+                          <div><span className="text-slate-400">SYNC:</span> Every {prov.syncInterval || "30m"}</div>
                           <div className="mt-0.5 text-indigo-600 font-bold">
-                            <span className="text-slate-400">MARKUP:</span> +{prov.profitPercent}% 
-                            {prov.fixedProfit > 0 ? ` + ₨${prov.fixedProfit}` : ""}
+                            <span className="text-slate-400">MARKUP:</span> +{Number(prov.profitPercent) || 0}% 
+                            {(Number(prov.fixedProfit) || 0) > 0 ? ` + ₨${prov.fixedProfit}` : ""}
                           </div>
                         </td>
                         <td className="py-4 px-4 font-mono">
-                          <div className="text-slate-800 font-extrabold">${prov.balance?.toFixed(2) || "0.00"}</div>
+                          <div className="text-slate-800 font-extrabold">${(Number(prov.balance) || 0).toFixed(2)}</div>
                           <div className="text-[9px] text-slate-400 uppercase font-sans mt-0.5">USD currency</div>
                         </td>
                         <td className="py-4 px-4">
@@ -1265,7 +1334,9 @@ export default function SmmManagement({
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredServices.map(svc => {
-                      const providerName = smmProviders.find(p => p.id === svc.providerId)?.name || "Local / Manual";
+                      const providerName = (smmProviders || []).find(p => p?.id === svc.providerId)?.name || (svc.providerId === "local" ? "Custom Direct" : "Local / Manual");
+                      const safeRate = Number(svc.rate) || 0;
+                      const safeSellingPrice = Number(svc.sellingPrice) || 0;
                       return (
                         <tr key={svc.id} className="hover:bg-slate-50/30 transition">
                           <td className="py-3.5 px-4 font-mono text-[10px] text-slate-400">#{svc.id}</td>
@@ -1273,7 +1344,7 @@ export default function SmmManagement({
                             <div className="font-extrabold text-slate-800 line-clamp-2">{svc.name}</div>
                             <div className="text-[9px] text-slate-400 font-bold uppercase mt-1 flex items-center gap-1.5 flex-wrap">
                               <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-150">
-                                Prov ID: {svc.providerServiceId}
+                                Prov ID: {svc.providerServiceId || svc.id}
                               </span>
                               <span>•</span>
                               <span className="text-indigo-600">{providerName}</span>
@@ -1287,12 +1358,12 @@ export default function SmmManagement({
                           </td>
                           <td className="py-3.5 px-4 text-slate-600 font-semibold max-w-[200px] truncate">{svc.category}</td>
                           <td className="py-3.5 px-4 font-mono text-slate-500 font-bold">
-                            {svc.providerId === "local" ? "N/A" : `$${svc.rate.toFixed(4)}`}
+                            {svc.providerId === "local" ? "N/A" : `$${safeRate.toFixed(4)}`}
                           </td>
                           <td className="py-3.5 px-4 font-mono">
-                            <div className="text-slate-800 font-black text-xs">₨ {svc.sellingPrice.toFixed(2)}</div>
+                            <div className="text-slate-800 font-black text-xs">₨ {safeSellingPrice.toFixed(2)}</div>
                             <div className="text-[9px] text-emerald-600 font-extrabold mt-0.5">
-                              Est: ${(svc.sellingPrice / 278).toFixed(4)}
+                              Est: ${(safeSellingPrice / 278).toFixed(4)}
                             </div>
                           </td>
                           <td className="py-3.5 px-4 font-mono text-[10px] text-slate-500">
@@ -1679,19 +1750,20 @@ export default function SmmManagement({
             ) : (
               <div className="divide-y divide-slate-100 font-mono text-xs">
                 {filteredLogs.map(log => {
-                  const logBadgeColors = {
+                  const logBadgeColors: Record<string, string> = {
                     api: "bg-blue-50 text-blue-700 border-blue-200",
                     sync: "bg-indigo-50 text-indigo-700 border-indigo-200",
                     error: "bg-red-50 text-red-700 border-red-200",
                     activity: "bg-slate-100 text-slate-600 border-slate-200"
                   };
+                  const badgeClass = logBadgeColors[log.type] || "bg-slate-100 text-slate-600 border-slate-200";
                   return (
                     <div key={log.id} className="p-4 hover:bg-slate-50/50 transition flex flex-col sm:flex-row sm:items-start gap-3.5">
                       <span className="text-[10px] text-slate-400 shrink-0 font-bold">
-                        {new Date(log.createdAt).toLocaleTimeString()}
+                        {log.createdAt ? new Date(log.createdAt).toLocaleTimeString() : "Recent"}
                       </span>
-                      <span className={`px-2 py-0.5 rounded border text-[9px] font-black uppercase shrink-0 ${logBadgeColors[log.type]}`}>
-                        {log.type}
+                      <span className={`px-2 py-0.5 rounded border text-[9px] font-black uppercase shrink-0 ${badgeClass}`}>
+                        {log.type || "INFO"}
                       </span>
                       <div>
                         <h4 className="font-extrabold text-slate-800 uppercase tracking-wide text-[11px]">{log.title}</h4>

@@ -5,11 +5,13 @@ import {
   Globe, ShoppingCart, Link as LinkIcon, HelpCircle, Clock, Info, 
   RefreshCw, ExternalLink, ChevronDown, Search, Sparkles, AlertCircle, Wallet, FileText,
   RotateCcw, CheckCircle2, XCircle, AlertTriangle, Download, Layers, ListFilter,
-  Zap, ArrowRight, ShieldCheck, Check, Copy, TrendingUp, BarChart3, Eye, Sparkle
+  Zap, ArrowRight, ShieldCheck, Check, Copy, TrendingUp, BarChart3, Eye, Sparkle,
+  Play, X
 } from "lucide-react";
 import { SmmCategory, SmmService, SmmOrder, SmmLog, SmmProvider, UserAccount } from "../types";
 import CurrencyDisplay from "./CurrencyDisplay";
 import SmmReceiptModal from "./SmmReceiptModal";
+import SmmHowToOrderTutorial from "./SmmHowToOrderTutorial";
 import { InvoiceData } from "../lib/invoiceGenerator";
 import { sanitizeUrl, isSafeUrl } from "../lib/security";
 
@@ -206,6 +208,32 @@ export default function SmmClientStore({
   const [categorySearch, setCategorySearch] = useState<string>("");
   const [serviceSearch, setServiceSearch] = useState<string>("");
 
+  // Dedicated "How to Order" Interactive Walkthrough Tutorial States
+  const [showSmmTutorial, setShowSmmTutorial] = useState<boolean>(false);
+  const [showSmmTutorialHint, setShowSmmTutorialHint] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("zerox_smm_tutorial_hint_dismissed") !== "true";
+    }
+    return true;
+  });
+  const [isSmmGuideMinimized, setIsSmmGuideMinimized] = useState<boolean>(true);
+
+  const handleStartSmmTutorial = () => {
+    setShowSmmTutorial(true);
+    setShowSmmTutorialHint(false);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("zerox_smm_tutorial_hint_dismissed", "true");
+    }
+  };
+
+  const handleDismissSmmTutorialHint = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowSmmTutorialHint(false);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("zerox_smm_tutorial_hint_dismissed", "true");
+    }
+  };
+
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const serviceDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -281,7 +309,7 @@ export default function SmmClientStore({
       });
       const data = await res.json();
       if (!res.ok || data.error) {
-        toast.error(data.error || "Refill request declined by provider gateway.", { id: "smm-refill" });
+        toast.error(data.error || "Refill request could not be processed at this time.", { id: "smm-refill" });
       } else {
         toast.success(data.message || `Refill accepted! Refill ID: #${data.refillId}`, { id: "smm-refill" });
         setSmmOrders(prev => prev.map(o => o.id === ord.id ? { ...o, refillStatus: "REQUESTED", refillId: String(data.refillId) } : o));
@@ -572,7 +600,7 @@ export default function SmmClientStore({
 
       const resData = await res.json();
       if (!res.ok || resData.error) {
-        const errDetail = resData.error || resData.message || "Order declined by provider gateway";
+        const errDetail = resData.error || resData.message || "Order could not be processed at this time";
         toast.error(`Order Failed: ${errDetail}`, { id: "smm-order-toast" });
         setIsOrdering(false);
         return;
@@ -792,16 +820,8 @@ export default function SmmClientStore({
         
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-2">
-            {/* Minimal Status Pills */}
+            {/* Minimal Status Pills & How to Order Actions */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 text-[11px] font-bold tracking-tight">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                SMM Gateway Active
-              </span>
-
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-50 border border-sky-200/80 text-[#00AEEF] text-[11px] font-bold">
                 <Zap className="w-3 h-3 text-[#00AEEF] fill-current" />
                 Instant Delivery
@@ -811,6 +831,54 @@ export default function SmmClientStore({
                 <Sparkle className="w-3 h-3 text-[#00AEEF]" />
                 {smmServices.filter(s => s.isActive && !s.isHidden).length} Verified Services
               </span>
+
+              {/* Dedicated "How to Order" Interactive Walkthrough Demo Trigger */}
+              <div className="relative inline-block">
+                <button
+                  type="button"
+                  onClick={handleStartSmmTutorial}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-gradient-to-r from-blue-600/15 via-[#00AEEF]/20 to-blue-500/15 hover:from-blue-600/30 hover:to-[#00AEEF]/30 text-blue-700 border border-[#00AEEF]/40 hover:border-[#00AEEF] shadow-xs transition-all cursor-pointer active:scale-95 group shrink-0"
+                  title="Watch Step-by-Step SMM Demo"
+                >
+                  <div className="w-4 h-4 rounded-full bg-[#00AEEF] text-white flex items-center justify-center transition-transform group-hover:scale-110 shadow-xs">
+                    <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
+                  </div>
+                  <span className="whitespace-nowrap font-bold tracking-tight text-[#00AEEF]">How to Order</span>
+                </button>
+
+                {/* Subtle First-Time User Hint */}
+                {showSmmTutorialHint && (
+                  <div className="absolute top-full left-0 mt-2 z-30 bg-gradient-to-r from-blue-600 via-[#00AEEF] to-cyan-500 text-white text-[10.5px] font-bold px-3 py-1.5 rounded-xl shadow-2xl border border-blue-300/50 flex items-center gap-2 whitespace-nowrap animate-bounce">
+                    <span className="w-2 h-2 rounded-full bg-white animate-ping shrink-0" />
+                    <button
+                      type="button"
+                      onClick={handleStartSmmTutorial}
+                      className="cursor-pointer hover:underline text-white font-bold"
+                    >
+                      Watch SMM Demo ▶
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDismissSmmTutorialHint}
+                      className="p-1 hover:bg-black/20 rounded-md text-blue-100 hover:text-white cursor-pointer ml-1 transition-colors"
+                      title="Dismiss hint"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Collapsible Process Guide Toggle */}
+              <button
+                type="button"
+                onClick={() => setIsSmmGuideMinimized(!isSmmGuideMinimized)}
+                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold border border-slate-200 transition cursor-pointer"
+                title={isSmmGuideMinimized ? "Show 4-step order flow guide" : "Hide guide"}
+              >
+                <span>{isSmmGuideMinimized ? "4-Step Guide" : "Hide Guide"}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isSmmGuideMinimized ? "" : "rotate-180 text-[#00AEEF]"}`} />
+              </button>
             </div>
 
             <div>
@@ -822,39 +890,10 @@ export default function SmmClientStore({
               </p>
             </div>
           </div>
-
-          {/* Wallet Balance Widget - Clean Minimal Box */}
-          <div className="bg-slate-50/90 border border-slate-200/90 rounded-2xl p-3 sm:p-4 flex items-center justify-between lg:flex-col lg:items-end gap-3 shrink-0 shadow-2xs">
-            <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                Your Wallet Balance
-              </span>
-              <div className="font-black text-slate-900 text-base sm:text-lg">
-                {currentUser ? (
-                  <CurrencyDisplay 
-                    baseUnits={currentUser.balance} 
-                    formatPrice={formatPrice} 
-                    inline={true} 
-                    usdClassName="text-emerald-600 ml-1 text-xs font-bold" 
-                  />
-                ) : (
-                  <span className="text-slate-400 text-xs">Not logged in</span>
-                )}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setActiveTab("wallet")}
-              className="bg-[#00AEEF] hover:bg-[#0098d4] text-white font-extrabold text-xs px-3.5 py-2 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
-            >
-              <Wallet className="w-3.5 h-3.5" />
-              <span>{currentUser ? "Top Up Wallet" : "Sign In"}</span>
-            </button>
-          </div>
         </div>
 
         {/* Minimal Feature Highlights Bar */}
-        <div className="relative z-10 mt-4 pt-3.5 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-semibold text-slate-600">
+        <div className="relative z-10 mt-4 pt-3.5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-semibold text-slate-600">
           <div className="flex items-center gap-1.5">
             <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             <span className="text-[11px] sm:text-xs">Instant Dispatch</span>
@@ -867,11 +906,68 @@ export default function SmmClientStore({
             <RotateCcw className="w-3.5 h-3.5 text-[#00AEEF] shrink-0" />
             <span className="text-[11px] sm:text-xs">Auto Refund Protection</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Globe className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-            <span className="text-[11px] sm:text-xs">Global API Coverage</span>
-          </div>
         </div>
+
+        {/* Expandable Process Guide & Steps (Collapsible) */}
+        {!isSmmGuideMinimized && (
+          <div className="relative z-10 mt-3.5 pt-3.5 border-t border-slate-100 animate-in fade-in">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider">
+                How SMM Orders Work (4 Simple Steps)
+              </span>
+              <button
+                type="button"
+                onClick={handleStartSmmTutorial}
+                className="text-[11px] font-extrabold text-[#00AEEF] hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <Play className="w-3 h-3 fill-current" />
+                <span>Launch Interactive Demo</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 flex items-start gap-2.5">
+                <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-50 text-[#00AEEF] text-xs font-black shrink-0 border border-blue-100">
+                  01
+                </span>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-bold text-slate-900">Choose Gateway</h4>
+                  <p className="text-[10px] text-slate-500 font-medium">Select TikTok, Instagram, YouTube, TG & more</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 flex items-start gap-2.5">
+                <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-50 text-[#00AEEF] text-xs font-black shrink-0 border border-blue-100">
+                  02
+                </span>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-bold text-slate-900">Select Package</h4>
+                  <p className="text-[10px] text-slate-500 font-medium">Review speed SLA, 30d refill & live pricing</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 flex items-start gap-2.5">
+                <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-50 text-[#00AEEF] text-xs font-black shrink-0 border border-blue-100">
+                  03
+                </span>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-bold text-slate-900">Link & Quantity</h4>
+                  <p className="text-[10px] text-slate-500 font-medium">Paste public URL, set quantity & instant cost</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 flex items-start gap-2.5">
+                <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-50 text-[#00AEEF] text-xs font-black shrink-0 border border-blue-100">
+                  04
+                </span>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-bold text-slate-900">Instant Dispatch</h4>
+                  <p className="text-[10px] text-slate-500 font-medium">Live progress tracking, refill & tax invoices</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Mode Navigation Bar */}
@@ -1667,7 +1763,7 @@ export default function SmmClientStore({
             <ShieldCheck className="w-4 h-4 text-[#00AEEF] shrink-0 mt-0.5" />
             <div className="leading-relaxed">
               <span className="font-extrabold text-slate-900">Automated Order Fulfillment Policy:</span>{" "}
-              SMM orders are sent directly to provider networks and cannot be cancelled manually by users once submitted. If a provider is unable to fulfill your order, the system will automatically cancel it and issue a refund (minus a 2% gateway processing fee) directly to your wallet balance.
+              SMM orders are processed automatically by Zerox Network and cannot be cancelled manually once submitted. If an order cannot be fulfilled, the system will automatically cancel it and issue a refund (minus a 2% processing fee) directly to your wallet balance.
             </div>
           </div>
 
@@ -1941,6 +2037,18 @@ export default function SmmClientStore({
           )}
         </div>
       )}
+
+      {/* Dedicated Interactive "How to Order" SMM Tutorial Walkthrough */}
+      <SmmHowToOrderTutorial
+        isOpen={showSmmTutorial}
+        onClose={() => setShowSmmTutorial(false)}
+        onNavigateToWallet={() => {
+          setShowSmmTutorial(false);
+          setActiveTab("wallet");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        formatPrice={formatPrice}
+      />
     </div>
   );
 }

@@ -5,10 +5,11 @@ import { SubscriptionProduct, SubscriptionCategory, SubscriptionOrder, UserAccou
 import { seedSubscriptions } from "../lib/seedSubscriptions";
 import { toast } from "react-hot-toast";
 import { sendNotification } from "../lib/notifications";
-import { Search, Filter, Crown, CheckCircle2, ChevronRight, ChevronLeft, ChevronDown, X, Clock, PlayCircle, History, PackageOpen, Tag, Lock, Calendar, AlertTriangle, RefreshCw, Hourglass, Trash2, XCircle, ShieldCheck, FileText, Info, HelpCircle, Download } from "lucide-react";
+import { Search, Filter, Crown, CheckCircle2, ChevronRight, ChevronLeft, ChevronDown, X, Clock, PlayCircle, History, PackageOpen, Tag, Lock, Calendar, AlertTriangle, RefreshCw, Hourglass, Trash2, XCircle, ShieldCheck, FileText, Info, HelpCircle, Download, Play, Sparkles, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import InvoiceModal from "./InvoiceModal";
 import { InvoiceData } from "../lib/invoiceGenerator";
+import SubscriptionHowToOrderTutorial from "./SubscriptionHowToOrderTutorial";
 
 function SubscriptionCountdown({ order, onRenew }: { order: SubscriptionOrder; onRenew: () => void }) {
   const [now, setNow] = useState(new Date());
@@ -194,6 +195,32 @@ export default function SubscriptionsClientStore({
   const [orderSuccessModalOpen, setOrderSuccessModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
+
+  // Dedicated "How to Order" Interactive Walkthrough Tutorial States
+  const [showSubTutorial, setShowSubTutorial] = useState<boolean>(false);
+  const [showSubTutorialHint, setShowSubTutorialHint] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("zerox_sub_tutorial_hint_dismissed") !== "true";
+    }
+    return true;
+  });
+  const [isSubGuideMinimized, setIsSubGuideMinimized] = useState<boolean>(true);
+
+  const handleStartSubTutorial = () => {
+    setShowSubTutorial(true);
+    setShowSubTutorialHint(false);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("zerox_sub_tutorial_hint_dismissed", "true");
+    }
+  };
+
+  const handleDismissSubTutorialHint = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowSubTutorialHint(false);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("zerox_sub_tutorial_hint_dismissed", "true");
+    }
+  };
   
   const carouselRef = useRef<HTMLDivElement>(null);
   const myOrdersCarouselRef = useRef<HTMLDivElement>(null);
@@ -606,24 +633,75 @@ export default function SubscriptionsClientStore({
         )}
         
         <div className="relative z-10 p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center shrink-0 border border-white/20 shadow-inner">
-                <Crown className="w-5 h-5 text-yellow-400" />
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="space-y-2">
+              {/* Minimal Status Pills & How to Order Actions */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[11px] font-bold">
+                  <Zap className="w-3 h-3 text-emerald-400 fill-current" />
+                  Instant Activation
+                </span>
+
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/10 border border-white/20 text-blue-100 text-[11px] font-bold">
+                  <Crown className="w-3 h-3 text-yellow-400" />
+                  {products.filter(p => p.status === "ACTIVE").length || 24} Premium Services
+                </span>
+
+                {/* Dedicated "How to Order" Interactive Walkthrough Demo Trigger */}
+                <button
+                  type="button"
+                  onClick={handleStartSubTutorial}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-400 hover:from-yellow-300 hover:to-amber-200 text-slate-950 shadow-md transition-all cursor-pointer active:scale-95 group shrink-0"
+                  title="Interactive Step-by-Step Subscriptions Tutorial"
+                >
+                  <div className="w-4 h-4 rounded-full bg-slate-950 text-yellow-400 flex items-center justify-center transition-transform group-hover:scale-110 shadow-xs">
+                    <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
+                  </div>
+                  <span className="whitespace-nowrap font-black tracking-tight">How to Order</span>
+                </button>
+
+                {/* Collapsible Process Guide Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setIsSubGuideMinimized(!isSubGuideMinimized)}
+                  className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold border border-white/20 transition cursor-pointer"
+                  title={isSubGuideMinimized ? "Show 4-step subscription order flow guide" : "Hide guide"}
+                >
+                  <span>{isSubGuideMinimized ? "4-Step Guide" : "Hide Guide"}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isSubGuideMinimized ? "" : "rotate-180 text-yellow-300"}`} />
+                </button>
               </div>
-              <div>
-                <h1 className="text-lg sm:text-2xl font-black tracking-tight drop-shadow-md">Premium Subscriptions</h1>
+
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center shrink-0 border border-white/20 shadow-inner">
+                  <Crown className="w-5 h-5 text-yellow-400" />
+                </div>
+                <div>
+                  <h1 className="text-lg sm:text-2xl font-black tracking-tight drop-shadow-md">Premium Subscriptions</h1>
+                  <p className="text-xs text-blue-100/90 font-medium">Genuine OTT, AI, Streaming, Music & VPN Accounts with 25% OFF Promo</p>
+                </div>
               </div>
             </div>
 
-            <button
-              onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
-              aria-label={isHeaderExpanded ? "Minimize header" : "Expand header"}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all active:scale-95 text-xs font-bold shrink-0"
-            >
-              <span className="hidden sm:inline">{isHeaderExpanded ? "Collapse" : "Expand"}</span>
-              <ChevronDown className={`w-4 h-4 text-[#00AEEF] neon-arrow-bounce transition-transform duration-300 ${isHeaderExpanded ? "rotate-180" : ""}`} />
-            </button>
+            <div className="flex items-center gap-2 self-end lg:self-center">
+              <button
+                type="button"
+                onClick={handleStartSubTutorial}
+                className="hidden md:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all active:scale-95 text-xs font-bold shrink-0"
+              >
+                <PlayCircle className="w-4 h-4 text-yellow-400" />
+                <span>Interactive Demo</span>
+              </button>
+
+              <button
+                onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
+                aria-label={isHeaderExpanded ? "Minimize header" : "Expand header"}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all active:scale-95 text-xs font-bold shrink-0"
+              >
+                <span className="hidden sm:inline">{isHeaderExpanded ? "Collapse" : "Expand"}</span>
+                <ChevronDown className={`w-4 h-4 text-[#00AEEF] neon-arrow-bounce transition-transform duration-300 ${isHeaderExpanded ? "rotate-180" : ""}`} />
+              </button>
+            </div>
           </div>
 
           <AnimatePresence>
@@ -642,6 +720,67 @@ export default function SubscriptionsClientStore({
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Expandable Process Guide & Steps (Collapsible) */}
+          {!isSubGuideMinimized && (
+            <div className="relative z-10 mt-3.5 pt-3.5 border-t border-white/15 animate-in fade-in">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-black uppercase text-indigo-200 tracking-wider">
+                  How Subscription Orders Work (4 Simple Steps)
+                </span>
+                <button
+                  type="button"
+                  onClick={handleStartSubTutorial}
+                  className="text-[11px] font-extrabold text-yellow-300 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Play className="w-3 h-3 fill-current" />
+                  <span>Launch Interactive Demo</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                <div className="bg-black/30 border border-white/15 rounded-xl p-2.5 flex items-start gap-2.5 backdrop-blur-sm">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-yellow-400 text-slate-950 text-xs font-black shrink-0">
+                    01
+                  </span>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-white">Choose Service</h4>
+                    <p className="text-[10px] text-blue-100 font-medium">Browse Netflix, ChatGPT, Spotify, VPNs & more</p>
+                  </div>
+                </div>
+
+                <div className="bg-black/30 border border-white/15 rounded-xl p-2.5 flex items-start gap-2.5 backdrop-blur-sm">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-yellow-400 text-slate-950 text-xs font-black shrink-0">
+                    02
+                  </span>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-white">Contact & Profile</h4>
+                    <p className="text-[10px] text-blue-100 font-medium">Set delivery email, WhatsApp & profile notes</p>
+                  </div>
+                </div>
+
+                <div className="bg-black/30 border border-white/15 rounded-xl p-2.5 flex items-start gap-2.5 backdrop-blur-sm">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-yellow-400 text-slate-950 text-xs font-black shrink-0">
+                    03
+                  </span>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-white">Wallet Checkout</h4>
+                    <p className="text-[10px] text-blue-100 font-medium">Instant balance deduction with zero extra fees</p>
+                  </div>
+                </div>
+
+                <div className="bg-black/30 border border-white/15 rounded-xl p-2.5 flex items-start gap-2.5 backdrop-blur-sm">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-yellow-400 text-slate-950 text-xs font-black shrink-0">
+                    04
+                  </span>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-white">Instant Activation</h4>
+                    <p className="text-[10px] text-blue-100 font-medium">Live expiry timer, credentials & 1-click renew</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1456,6 +1595,15 @@ export default function SubscriptionsClientStore({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Subscription Interactive "How to Order" Step-by-Step Tutorial Walkthrough */}
+      <SubscriptionHowToOrderTutorial
+        isOpen={showSubTutorial}
+        onClose={() => setShowSubTutorial(false)}
+        formatPrice={formatPrice}
+        currentUser={currentUser}
+        siteTitle="ZEROX NETWORK"
+      />
     </div>
   );
 }

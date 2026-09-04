@@ -4,7 +4,8 @@ import {
   CreditCard, Wallet, Landmark, Copy, Check, ArrowUpRight, Clock, 
   CheckCircle2, XCircle, Info, Bitcoin, Sparkles, UploadCloud, ShieldCheck,
   Globe, QrCode, Zap, ChevronDown, RefreshCw, Filter, AlertCircle, Download,
-  ArrowLeft, Search, AlertTriangle, Percent, ArrowRight, CheckCircle, X
+  ArrowLeft, Search, AlertTriangle, Percent, ArrowRight, CheckCircle, X,
+  DollarSign, Coins
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { DepositRequest, DepositInstruction, UserAccount, CryptoAddressItem } from "../types";
@@ -12,7 +13,6 @@ import { sanitizeInput, sanitizeUrl, isSafeUrl } from "../lib/security";
 import { downloadWalletReceiptPdf } from "../lib/walletReceiptGenerator";
 import CryptoDepositGateway from "./CryptoDepositGateway";
 import { GatewayBrandIcon } from "./GatewayBrandIcon";
-import ProfileWalletCard from "./ProfileWalletCard";
 
 // USD conversion rate: 1 USD ≈ 275 PKR
 const PKR_TO_USD_RATE = 275;
@@ -81,6 +81,18 @@ export default function CashDeposit({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showQrModal, activeGatewayModal]);
+
+  // Lock background scrolling when full-screen gateway is active
+  useEffect(() => {
+    if (activeGatewayModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [activeGatewayModal]);
 
   // Auto-select first available valid method if current is hidden
   useEffect(() => {
@@ -336,12 +348,12 @@ export default function CashDeposit({
   const netUsdEquivalent = (netAmountInPKR / (cryptoRate || 278)).toFixed(2);
 
   const availableGateways = [
-    { id: "easypaisa" as const, name: "Easypaisa", tag: "2.0% Fee", color: "text-emerald-500", bgActive: "bg-emerald-50 border-emerald-400" },
-    { id: "jazzcash" as const, name: "JazzCash", tag: "2.0% Fee", color: "text-rose-500", bgActive: "bg-rose-50 border-rose-400" },
-    { id: "nayapay" as const, name: "NayaPay", tag: "2.0% Fee", color: "text-sky-500", bgActive: "bg-sky-50 border-sky-400" },
-    { id: "bank" as const, name: "Bank Transfer", tag: "2.0% Fee", color: "text-blue-600", icon: Landmark, bgActive: "bg-blue-50 border-blue-400" },
-    { id: "crypto" as const, name: "Crypto (USDT/BTC)", tag: "0.5% Fee", color: "text-amber-500", icon: Bitcoin, bgActive: "bg-amber-50 border-amber-400" },
-    { id: "redotpay" as const, name: "RedotPay", tag: "0.5% Fee", color: "text-red-500", icon: Globe, bgActive: "bg-red-50 border-red-400" }
+    { id: "easypaisa" as const, name: "Easypaisa", shortName: "Easypaisa", tag: "2.0% Fee", color: "text-emerald-500", bgActive: "bg-emerald-50 border-emerald-400" },
+    { id: "jazzcash" as const, name: "JazzCash", shortName: "JazzCash", tag: "2.0% Fee", color: "text-rose-500", bgActive: "bg-rose-50 border-rose-400" },
+    { id: "nayapay" as const, name: "Naya Pay", shortName: "Naya Pay", tag: "2.0% Fee", color: "text-sky-500", bgActive: "bg-sky-50 border-sky-400" },
+    { id: "bank" as const, name: "Bank Transfer", shortName: "Bank", tag: "2.0% Fee", color: "text-blue-600", icon: Landmark, bgActive: "bg-blue-50 border-blue-400" },
+    { id: "crypto" as const, name: "Crypto (USDT)", shortName: "Crypto", tag: "0.5% Fee", color: "text-amber-500", icon: Bitcoin, bgActive: "bg-amber-50 border-amber-400" },
+    { id: "redotpay" as const, name: "RedotPay", shortName: "RedotPay", tag: "0.5% Fee", color: "text-red-500", icon: Globe, bgActive: "bg-red-50 border-red-400" }
   ].filter(method => {
     if (method.id === "crypto") {
       const status = cryptoGatewaySettings?.gatewayStatus || "enabled";
@@ -369,54 +381,37 @@ export default function CashDeposit({
 
   return (
     <div className="space-y-6">
-      {/* Premium Futuristic Dashboard Profile & Wallet Card */}
-      <ProfileWalletCard
-        currentUser={currentUser}
-        cryptoRate={cryptoRate}
-        formatPrice={formatPrice}
-        showAdminButton={false}
-        onTopUp={() => {
-          const el = document.getElementById("select-payment-gateway-section");
-          if (el) {
-            el.scrollIntoView({ behavior: "smooth" });
-          }
-        }}
-      />
-
-      {/* Sleek Black Section Header - Matched to Virtual Number Tab */}
-      <div id="select-payment-gateway-section" className="bg-slate-900 border border-slate-800 text-white rounded-2xl p-3.5 sm:p-4 shadow-md transition-all duration-300">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          {/* Single Title Line: Icon + Title + Instant Badge */}
-          <div className="flex items-center gap-2.5 flex-wrap min-w-0">
-            <div className="p-2 rounded-xl bg-blue-500/15 text-[#00AEEF] border border-blue-500/20 shrink-0">
-              <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <h2 className="text-sm sm:text-base font-black text-white tracking-tight truncate font-sans">
-              Deposit Funds &amp; Wallet
-            </h2>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#00AEEF]/15 text-[#00AEEF] border border-[#00AEEF]/30 uppercase tracking-wider shrink-0">
-              <Zap className="w-3 h-3 fill-[#00AEEF]" />
-              Instant Ledger Credit
-            </span>
-          </div>
-
-          {/* Compact Balance Pill */}
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <div className="bg-slate-800/90 border border-slate-700/80 px-3 py-1.5 rounded-xl flex items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase font-mono">Balance:</span>
-              <span className="text-sm font-black text-white font-mono">{formatPrice(currentUser.balance || 0)}</span>
-              <span className="text-[10px] text-[#00AEEF] font-mono font-bold">
-                ≈ ${((currentUser.balance || 0) * (cryptoRate || 278) / PKR_TO_USD_RATE).toFixed(2)} USD
-              </span>
+      {/* Sleek Minimalist Section Header - Professional & Streamlined */}
+      <div 
+        id="select-payment-gateway-section" 
+        className="bg-slate-900 border border-slate-800 text-white rounded-2xl p-4 sm:p-5 shadow-sm transition-all duration-200"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          {/* Header Title + Badges + Professional Description */}
+          <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+            <div className="p-2.5 rounded-xl bg-[#00AEEF]/10 text-[#00AEEF] border border-[#00AEEF]/20 shrink-0">
+              <Wallet className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
 
-            {pendingCount > 0 && (
-              <div className="bg-amber-950/40 border border-amber-500/30 px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 text-amber-400 text-xs font-bold font-mono">
-                <Clock className="w-3.5 h-3.5 animate-pulse" />
-                <span>{pendingCount} Pending</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-black text-white tracking-tight font-sans">
+                  Deposit Funds
+                </h2>
               </div>
-            )}
+              <p className="text-xs text-slate-400 font-medium mt-1 leading-relaxed">
+                Select an official payment gateway below to top up your account with instant verification.
+              </p>
+            </div>
           </div>
+
+          {/* Pending Status Badge (Only shown if deposits are currently pending) */}
+          {pendingCount > 0 && (
+            <div className="bg-amber-950/40 border border-amber-500/30 px-3 py-2 rounded-xl flex items-center gap-2 text-amber-300 text-xs font-bold font-mono shrink-0 self-start sm:self-auto">
+              <Clock className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
+              <span>{pendingCount} Deposit{pendingCount > 1 ? "s" : ""} Under Review</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -512,31 +507,31 @@ export default function CashDeposit({
         </div>
       </div>
 
-      {/* Full-Screen Payment Gateway Modal / Page */}
+      {/* Full-Screen Dedicated Payment Gateway View */}
       <AnimatePresence>
         {activeGatewayModal && (
           <div 
-            id="fullscreen-gateway-overlay"
-            className="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md overflow-y-auto flex flex-col p-2 sm:p-4 md:p-6"
+            id="fullscreen-gateway-page"
+            className="fixed inset-0 z-[200] bg-[#070b14] w-full h-full min-h-screen overflow-y-auto flex flex-col"
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.98, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98, y: 10 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="w-full max-w-4xl mx-auto bg-white border border-slate-200/90 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="w-full min-h-screen flex-1 flex flex-col bg-[#070b14] text-slate-100"
             >
-              {/* Sleek Top Navigation Header with Back and Close X */}
-              <div className="bg-slate-900 text-white px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 border-b border-slate-800">
-                <div className="flex items-center gap-3 min-w-0">
+              {/* Full-Width Sticky Top Navigation Bar */}
+              <header className="sticky top-0 z-40 bg-[#0c1322]/95 backdrop-blur-md text-white px-4 sm:px-6 md:px-10 py-3.5 sm:py-4 flex items-center justify-between gap-3 border-b border-slate-800 shadow-md">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                   <button
                     type="button"
                     onClick={() => setActiveGatewayModal(null)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition text-xs font-bold cursor-pointer"
-                    title="Back to Gateways"
+                    className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 transition-all duration-150 text-xs sm:text-sm font-bold cursor-pointer active:scale-95 shrink-0 shadow-xs"
+                    title="Back to Wallet"
                   >
                     <ArrowLeft className="w-4 h-4" />
-                    <span className="hidden sm:inline">Back</span>
+                    <span>Back to Wallet</span>
                   </button>
 
                   <div className="flex items-center gap-2.5 min-w-0">
@@ -546,88 +541,48 @@ export default function CashDeposit({
                         <GatewayBrandIcon 
                           methodId={activeGatewayModal || "wallet"} 
                           logoUrl={activeInst?.gatewayLogoUrl} 
-                          className="w-9 h-9" 
+                          className="w-9 h-9 sm:w-10 sm:h-10 shrink-0" 
                           iconClassName="w-5 h-5" 
                         />
                       );
                     })()}
                     <div className="truncate">
-                      <h2 className="text-sm sm:text-base font-black text-white truncate tracking-tight">
-                        {availableGateways.find(g => g.id === activeGatewayModal)?.name || "Payment"} Gateway
-                      </h2>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-sm sm:text-base md:text-lg font-bold text-white truncate tracking-tight">
+                          {availableGateways.find(g => g.id === activeGatewayModal)?.name || "Payment Channel"}
+                        </h2>
+                        <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-950/70 text-emerald-400 border border-emerald-500/30 font-mono">
+                          <ShieldCheck className="w-3 h-3" />
+                          Verified Channel
+                        </span>
+                      </div>
                       <p className="text-[10px] text-slate-400 font-mono hidden xs:block">
-                        Instant Verification &amp; Wallet Crediting Desk
+                        Instant Auto-Verification &amp; Ledger Crediting
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 font-mono">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    Verified Channel
-                  </span>
-
-                  {/* Prominent Close X Button */}
-                  <button
-                    type="button"
-                    id="close-gateway-page-btn"
-                    onClick={() => setActiveGatewayModal(null)}
-                    className="p-2 sm:p-2.5 rounded-xl bg-slate-800 hover:bg-rose-500/20 hover:text-rose-400 text-slate-300 border border-slate-700 hover:border-rose-500/30 transition-all duration-150 cursor-pointer flex items-center justify-center"
-                    title="Close Gateway (Esc)"
-                    aria-label="Close Gateway"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <div className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300 font-medium shadow-inner">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span className="hidden sm:inline">Official 256-bit Secure Gateway</span>
+                    <span className="sm:hidden">256-bit Secure</span>
+                  </div>
                 </div>
-              </div>
+              </header>
 
-              {/* Gateway Modal Body */}
-              <div className="p-4 sm:p-6 md:p-8 overflow-y-auto space-y-6 text-slate-800 max-h-[80vh] custom-scrollbar">
-                
-                {/* Gateway Switcher Tabs inside Full Screen */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-100">
-                  {availableGateways.map((method) => {
-                    const isActive = selectedMethod === method.id;
-                    const tabInst = instructions.find(i => i.method === method.id);
-                    return (
-                      <button
-                        key={method.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedMethod(method.id);
-                          setActiveGatewayModal(method.id);
-                          setSelectedSubAccountIdx(0);
-                          setError("");
-                          setSuccess("");
-                          setVerificationResult(null);
-                        }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer border flex items-center gap-2 ${
-                          isActive
-                            ? "bg-[#00AEEF] text-slate-950 border-[#00AEEF] shadow-xs"
-                            : "bg-slate-50 text-slate-600 border-slate-200/80 hover:bg-slate-100"
-                        }`}
-                      >
-                        <GatewayBrandIcon 
-                          methodId={method.id} 
-                          logoUrl={tabInst?.gatewayLogoUrl} 
-                          className="w-5 h-5 !rounded-md" 
-                          iconClassName="w-3.5 h-3.5" 
-                        />
-                        <span>{method.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+              {/* Gateway Page Body - Full-Screen Viewport container */}
+              <div className="flex-1 w-full max-w-6xl mx-auto px-3.5 sm:px-6 md:px-8 py-5 sm:py-7 space-y-6 pb-28 text-slate-100">
 
                 {/* Crypto Gateway View */}
                 {selectedMethod === "crypto" ? (
                   cryptoGatewaySettings?.gatewayStatus === "maintenance" ? (
-                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center space-y-2">
-                      <Bitcoin className="w-10 h-10 text-amber-500 mx-auto mb-2" />
-                      <h4 className="text-amber-800 font-bold text-sm">Crypto Gateway Under Maintenance</h4>
-                      <p className="text-amber-600 text-xs max-w-md mx-auto">
-                        Please use Easypaisa, JazzCash, NayaPay, or Bank Transfer while crypto maintenance completes.
+                    <div className="bg-amber-950/40 border border-amber-500/40 rounded-2xl sm:rounded-3xl p-8 text-center space-y-3">
+                      <Bitcoin className="w-12 h-12 text-amber-400 mx-auto" />
+                      <h4 className="text-amber-200 font-bold text-base">Crypto Gateway Under Scheduled Maintenance</h4>
+                      <p className="text-amber-300/80 text-xs max-w-md mx-auto leading-relaxed">
+                        Please utilize Easypaisa, JazzCash, NayaPay, or Bank Transfer while cryptocurrency node maintenance completes.
                       </p>
                     </div>
                   ) : (
@@ -643,161 +598,211 @@ export default function CashDeposit({
                     />
                   )
                 ) : !currentInstruction.isActive ? (
-                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex gap-3 text-amber-800 text-xs">
-                    <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="bg-amber-950/40 border border-amber-500/40 rounded-2xl sm:rounded-3xl p-6 flex items-start gap-3.5 text-amber-200 text-xs">
+                    <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold block text-sm">Gateway Currently Offline</span>
-                      <span className="text-amber-700">Please select another payment gateway from the options above.</span>
+                      <span className="font-bold text-sm block text-amber-100">Gateway Temporarily Offline</span>
+                      <span className="text-amber-300/80 mt-1 block">
+                        This payment method is currently undergoing routine reconciliation. Please select an alternative gateway from the switcher bar above.
+                      </span>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    {/* Step 1: Official Account Details Box */}
-                    <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 sm:p-5 space-y-4">
-                      <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 pb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-blue-50 text-blue-600 border border-blue-200/60 font-bold text-xs flex items-center justify-center">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
+                    
+                    {/* Step 1: Official Transfer Slip & Destination (Left Column) */}
+                    <div className="lg:col-span-5 bg-gradient-to-b from-slate-900/95 to-slate-950 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-5 sm:p-6 space-y-5 shadow-xl">
+                      {/* Step Header */}
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-6 h-6 rounded-full bg-[#00AEEF]/20 text-[#00AEEF] border border-[#00AEEF]/40 font-bold text-xs flex items-center justify-center font-mono">
                             1
                           </span>
-                          <h3 className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider font-sans">
-                            Official Transfer Destination
-                          </h3>
+                          <div>
+                            <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wider font-sans">
+                              Transfer Destination
+                            </h3>
+                            <p className="text-[10px] text-slate-400 font-mono mt-0.5">Send funds to the account below</p>
+                          </div>
                         </div>
-                        <span className="text-[10px] font-mono text-emerald-600 font-bold bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <ShieldCheck className="w-3 h-3" />
-                          ZeroX Official Account
+                        <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                          Verified
                         </span>
                       </div>
 
                       {/* Sub-Accounts Switcher if multiple accounts exist */}
                       {activeSubAccounts.length > 1 && (
-                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                          {activeSubAccounts.map((acc, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => setSelectedSubAccountIdx(idx)}
-                              className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer border whitespace-nowrap ${
-                                selectedSubAccountIdx === idx
-                                  ? "bg-white border-blue-500 text-blue-600 shadow-xs"
-                                  : "bg-transparent border-slate-200 text-slate-500 hover:text-slate-800"
-                              }`}
-                            >
-                              {acc.label || `Account ${idx + 1}`}
-                            </button>
-                          ))}
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono block">
+                            Select Destination Account:
+                          </span>
+                          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                            {activeSubAccounts.map((acc, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setSelectedSubAccountIdx(idx)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border whitespace-nowrap ${
+                                  selectedSubAccountIdx === idx
+                                    ? "bg-[#00AEEF] border-[#00AEEF] text-slate-950 shadow-xs"
+                                    : "bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white"
+                                }`}
+                              >
+                                {acc.label || `Account ${idx + 1}`}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       )}
 
-                      {/* Account Details Cards */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {/* Account Title */}
-                        <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Account Title</span>
-                          <div className="flex items-center justify-between gap-2 mt-1.5">
-                            <span className="text-xs font-bold text-slate-800 truncate select-all">
-                              {currentSubAccount.title || currentInstruction.accountTitle || "ZeroX Official"}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(currentSubAccount.title || currentInstruction.accountTitle, "title")}
-                              className="p-1 text-slate-400 hover:text-slate-700 rounded transition cursor-pointer"
-                              title="Copy Account Title"
-                            >
-                              {copiedField === "title" ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Account Number / IBAN / ID */}
-                        <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            {selectedMethod === "redotpay" ? "RedotPay ID" : "Account Number / IBAN"}
-                          </span>
-                          <div className="flex items-center justify-between gap-2 mt-1.5">
-                            <span className="text-xs font-mono font-bold text-[#00AEEF] truncate select-all">
-                              {currentSubAccount.number || currentInstruction.accountNumber}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(currentSubAccount.number || currentInstruction.accountNumber, "number")}
-                              className="p-1 text-slate-400 hover:text-slate-700 rounded transition cursor-pointer"
-                              title="Copy Account Number"
-                            >
-                              {copiedField === "number" ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Bank / Gateway Name & QR Trigger */}
-                        <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between gap-2 sm:col-span-2 lg:col-span-1 shadow-xs">
-                          <div>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gateway</span>
-                            <span className="text-xs font-bold text-slate-800 block mt-0.5">
-                              {currentInstruction.subtitle || selectedMethod.toUpperCase()}
-                            </span>
+                      {/* Official Digital Bank Card / Slip */}
+                      <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-inner">
+                        {/* Gateway Brand Header inside Card */}
+                        <div className="flex items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                          <div className="flex items-center gap-2.5">
+                            <GatewayBrandIcon 
+                              methodId={selectedMethod} 
+                              logoUrl={currentInstruction.gatewayLogoUrl} 
+                              className="w-8 h-8 rounded-lg" 
+                              iconClassName="w-4 h-4" 
+                            />
+                            <div>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                                Gateway Network
+                              </span>
+                              <span className="text-xs sm:text-sm font-black text-white">
+                                {currentInstruction.subtitle || selectedMethod.toUpperCase()}
+                              </span>
+                            </div>
                           </div>
 
                           {(currentInstruction.qrImageUrl || selectedMethod === "redotpay") && (
                             <button
                               type="button"
                               onClick={() => setShowQrModal(true)}
-                              className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
                             >
-                              <QrCode className="w-3.5 h-3.5 text-blue-600" />
-                              <span>QR Code</span>
+                              <QrCode className="w-3.5 h-3.5 text-[#00AEEF]" />
+                              <span>Show QR</span>
                             </button>
                           )}
                         </div>
+
+                        {/* Account Number / IBAN with Instant Copy */}
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono block">
+                            {selectedMethod === "redotpay" ? "RedotPay ID" : "Account Number / IBAN"}
+                          </span>
+                          
+                          <div className="flex items-center justify-between gap-2 bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl p-2.5 sm:p-3 transition-colors">
+                            <span className="text-sm sm:text-base font-mono font-black text-[#00AEEF] tracking-wide select-all truncate">
+                              {currentSubAccount.number || currentInstruction.accountNumber}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(currentSubAccount.number || currentInstruction.accountNumber, "number")}
+                              className={`w-8 h-8 rounded-lg transition-all duration-150 flex items-center justify-center cursor-pointer shrink-0 border ${
+                                copiedField === "number"
+                                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                                  : "bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border-slate-800 hover:border-slate-700 active:scale-95"
+                              }`}
+                              title="Copy Account Number"
+                              aria-label="Copy Account Number"
+                            >
+                              {copiedField === "number" ? (
+                                <Check className="w-4 h-4 text-emerald-400" />
+                              ) : (
+                                <Copy className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Account Title with Instant Copy */}
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono block">
+                            Account Title / Beneficiary
+                          </span>
+                          <div className="flex items-center justify-between gap-2 bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl p-2.5 sm:p-3 transition-colors">
+                            <span className="text-xs sm:text-sm font-bold text-white truncate select-all">
+                              {currentSubAccount.title || currentInstruction.accountTitle || "ZeroX Official"}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(currentSubAccount.title || currentInstruction.accountTitle, "title")}
+                              className={`w-8 h-8 rounded-lg transition-all duration-150 flex items-center justify-center cursor-pointer shrink-0 border ${
+                                copiedField === "title"
+                                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                                  : "bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border-slate-800 hover:border-slate-700 active:scale-95"
+                              }`}
+                              title="Copy Account Title"
+                              aria-label="Copy Account Title"
+                            >
+                              {copiedField === "title" ? (
+                                <Check className="w-4 h-4 text-emerald-400" />
+                              ) : (
+                                <Copy className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Instructions Note */}
-                      {currentInstruction.instructions && (
-                        <div className="text-[11px] text-slate-500 bg-white/80 border border-slate-200/60 rounded-xl p-3 flex items-start gap-2">
-                          <Info className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
-                          <p className="leading-relaxed">{currentInstruction.instructions}</p>
+                      {/* Instructions / How-It-Works Steps */}
+                      <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 space-y-2.5 text-xs text-slate-300">
+                        <div className="flex items-center gap-2 text-white font-bold text-xs">
+                          <Info className="w-4 h-4 text-[#00AEEF] shrink-0" />
+                          <span>Quick Transfer Guide:</span>
                         </div>
-                      )}
+                        <ul className="space-y-1.5 text-[11px] text-slate-400 list-disc list-inside leading-relaxed">
+                          <li>Open your <strong className="text-slate-200 font-semibold">{currentInstruction.subtitle || selectedMethod.toUpperCase()}</strong> app or internet banking.</li>
+                          <li>Send the desired funds to the official account details above.</li>
+                          <li>Note down the <strong className="text-slate-200 font-semibold">Transaction ID (TID)</strong> from your SMS receipt.</li>
+                          <li>Submit the verification form on the right to receive immediate balance credit.</li>
+                        </ul>
+                      </div>
                     </div>
 
-                    {/* Step 2: Payment Verification Submission */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-blue-50 text-blue-600 border border-blue-200/60 font-bold text-xs flex items-center justify-center">
+                    {/* Step 2: Verification Submission Form (Right Column) */}
+                    <div className="lg:col-span-7 bg-gradient-to-b from-slate-900/95 to-slate-950 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-5 sm:p-7 space-y-5 shadow-xl">
+                      {/* Step Header */}
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-6 h-6 rounded-full bg-[#00AEEF]/20 text-[#00AEEF] border border-[#00AEEF]/40 font-bold text-xs flex items-center justify-center font-mono">
                             2
                           </span>
-                          <h3 className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider font-sans">
-                            Submit Verification Details
-                          </h3>
+                          <div>
+                            <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wider font-sans">
+                              Submit Verification Details
+                            </h3>
+                            <p className="text-[10px] text-slate-400 font-mono mt-0.5">Automated instant ledger crediting</p>
+                          </div>
                         </div>
-                        <span className="text-[10px] font-mono text-blue-600 font-bold">
-                          Instant Auto-Verification
-                        </span>
                       </div>
 
-                      {/* Verification Result Card if any */}
+                      {/* Verification Result Notification if any */}
                       {verificationResult && (
-                        <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                           verificationResult.status === "success" 
-                            ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                            ? "bg-emerald-950/60 border-emerald-500/40 text-emerald-200"
                             : verificationResult.status === "failed"
-                              ? "bg-rose-50 border-rose-200 text-rose-900"
+                              ? "bg-rose-950/60 border-rose-500/40 text-rose-200"
                               : verificationResult.status === "already_used"
-                                ? "bg-amber-50 border-amber-200 text-amber-900"
-                                : "bg-blue-50 border-blue-200 text-blue-900"
+                                ? "bg-amber-950/60 border-amber-500/40 text-amber-200"
+                                : "bg-blue-950/60 border-blue-500/40 text-blue-200"
                         }`}>
                           <div className="flex items-center gap-3">
-                            {verificationResult.status === "success" && <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />}
-                            {verificationResult.status === "failed" && <XCircle className="w-5 h-5 text-rose-600 shrink-0" />}
-                            {verificationResult.status === "already_used" && <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />}
-                            {verificationResult.status === "pending" && <Clock className="w-5 h-5 text-blue-600 shrink-0" />}
+                            {verificationResult.status === "success" && <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />}
+                            {verificationResult.status === "failed" && <XCircle className="w-5 h-5 text-rose-400 shrink-0" />}
+                            {verificationResult.status === "already_used" && <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />}
+                            {verificationResult.status === "pending" && <Clock className="w-5 h-5 text-blue-400 shrink-0" />}
                             <div>
                               <h4 className="text-xs font-bold uppercase tracking-wider">{verificationResult.message}</h4>
                               <p className="text-[11px] opacity-80 mt-0.5">
                                 {verificationResult.status === "success" 
                                   ? `PKR ${verificationResult.amount?.toLocaleString()} has been credited to your wallet balance.`
-                                  : "You can track the live progress in your Deposit History."}
+                                  : "You can track live verification in your Deposit History."}
                               </p>
                             </div>
                           </div>
@@ -805,10 +810,35 @@ export default function CashDeposit({
                           <button
                             type="button"
                             onClick={() => setVerificationResult(null)}
-                            className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg transition shrink-0 cursor-pointer"
+                            className="px-3 py-1.5 bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-200 text-xs font-bold rounded-xl transition shrink-0 cursor-pointer"
                           >
                             Submit Another
                           </button>
+                        </div>
+                      )}
+
+                      {/* Quick Amount Suggestion Chips */}
+                      {!isCryptoOrRedot && (
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono block">
+                            Quick Amount Select (PKR):
+                          </span>
+                          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                            {[500, 1000, 2500, 5000, 10000].map((quickVal) => (
+                              <button
+                                key={quickVal}
+                                type="button"
+                                onClick={() => setAmount(String(quickVal))}
+                                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold transition cursor-pointer border shrink-0 ${
+                                  amount === String(quickVal)
+                                    ? "bg-[#00AEEF] text-slate-950 border-[#00AEEF] shadow-sm font-black"
+                                    : "bg-slate-950 border-slate-800 hover:bg-slate-800 text-slate-300"
+                                }`}
+                              >
+                                +₨ {quickVal.toLocaleString()}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       )}
 
@@ -816,8 +846,8 @@ export default function CashDeposit({
                       <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                           {/* Amount Input */}
-                          <div className="space-y-1">
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                          <div className="space-y-1.5">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
                               {isCryptoOrRedot ? "Amount Sent (USD / USDT)" : "Amount Sent (PKR)"}
                             </label>
                             <div className="relative">
@@ -827,16 +857,16 @@ export default function CashDeposit({
                                 placeholder={isCryptoOrRedot ? "e.g. 10" : "e.g. 1000"}
                                 value={amount}
                                 onChange={(e) => setAmount(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200/80 focus:border-[#00AEEF] focus:ring-2 focus:ring-[#00AEEF]/10 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-mono font-bold focus:outline-none transition-all placeholder:text-slate-400"
+                                className="w-full bg-slate-950 border border-slate-800 focus:border-[#00AEEF] focus:ring-2 focus:ring-[#00AEEF]/20 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono font-bold focus:outline-none transition-all placeholder:text-slate-600"
                                 required
                               />
                               {amountNum > 0 && (
-                                <span className="absolute right-3 top-2.5 text-[10px] font-bold text-emerald-600 font-mono">
+                                <span className="absolute right-3 top-2.5 text-[10px] font-bold text-emerald-400 font-mono">
                                   {isCryptoOrRedot ? `≈ ${formatPrice(amountInPKR / (cryptoRate || 278))}` : `≈ $${usdEquivalent} USD`}
                                 </span>
                               )}
                             </div>
-                            <span className="text-[9px] text-slate-400 block font-mono">
+                            <span className="text-[9.5px] text-slate-500 block font-mono">
                               {isCryptoOrRedot 
                                 ? `Rate: 1 USD ≈ ${cryptoRate} PKR | Min: ${cryptoMinDeposit} USD` 
                                 : `Rate: 1 USD ≈ ${PKR_TO_USD_RATE} PKR | Min: ${localMinDeposit} PKR`}
@@ -844,55 +874,55 @@ export default function CashDeposit({
                           </div>
 
                           {/* Transaction ID */}
-                          <div className="space-y-1">
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider font-mono">
-                              Transaction ID / TxID / Order ID
+                          <div className="space-y-1.5">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                              Transaction ID / Reference (TID)
                             </label>
                             <input
                               type="text"
                               placeholder={selectedMethod === "redotpay" ? "e.g. RedotPay Order ID" : "e.g. 84931057391"}
                               value={txId}
                               onChange={(e) => setTxId(e.target.value)}
-                              className="w-full bg-slate-50 border border-slate-200/80 focus:border-[#00AEEF] focus:ring-2 focus:ring-[#00AEEF]/10 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-mono font-bold focus:outline-none transition-all placeholder:text-slate-400"
+                              className="w-full bg-slate-950 border border-slate-800 focus:border-[#00AEEF] focus:ring-2 focus:ring-[#00AEEF]/20 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono font-bold focus:outline-none transition-all placeholder:text-slate-600"
                               required
                             />
-                            <span className="text-[9px] text-slate-400 block font-mono">
-                              Enter the unique receipt reference sequence
+                            <span className="text-[9.5px] text-slate-500 block font-mono">
+                              11 or 12-digit reference number from your SMS/app receipt
                             </span>
                           </div>
                         </div>
 
-                        {/* Dynamic Value & Fee Preview */}
+                        {/* Dynamic Fee & Net Credit Breakdown */}
                         {amountNum > 0 && (
-                          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 space-y-2">
-                            <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
-                              <span className="flex items-center gap-1 text-[#00AEEF]">
+                          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 space-y-2.5 shadow-inner">
+                            <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                              <span className="flex items-center gap-1.5 text-[#00AEEF]">
                                 <Sparkles className="w-3.5 h-3.5" />
-                                Deposit Calculation
+                                Deposit Fee Breakdown
                               </span>
-                              <span className="text-[10px] text-slate-500 font-mono font-bold">
-                                {feePercent}% {isCryptoOrRedot ? "Crypto" : "Local"} Fee
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                {feePercent}% {isCryptoOrRedot ? "Crypto" : "Local"} Gateway Fee
                               </span>
                             </div>
 
                             <div className="grid grid-cols-3 gap-2 text-xs">
-                              <div className="bg-white p-2 rounded-lg border border-slate-200/60">
-                                <span className="text-[9px] text-slate-400 font-bold block uppercase">Gross</span>
-                                <span className="font-bold text-slate-800 font-mono text-xs block mt-0.5">
+                              <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                                <span className="text-[9.5px] text-slate-400 font-bold block uppercase font-mono">Gross Amount</span>
+                                <span className="font-extrabold text-white font-mono text-xs block mt-1">
                                   {isCryptoOrRedot ? `$${amountNum.toFixed(2)}` : `₨ ${amountNum.toLocaleString()}`}
                                 </span>
                               </div>
 
-                              <div className="bg-white p-2 rounded-lg border border-slate-200/60">
-                                <span className="text-[9px] text-amber-600 font-bold block uppercase">Fee ({feePercent}%)</span>
-                                <span className="font-bold text-amber-600 font-mono text-xs block mt-0.5">
+                              <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                                <span className="text-[9.5px] text-amber-400 font-bold block uppercase font-mono">Fee ({feePercent}%)</span>
+                                <span className="font-extrabold text-amber-400 font-mono text-xs block mt-1">
                                   {isCryptoOrRedot ? `-$${(amountNum * (feePercent / 100)).toFixed(2)}` : `-₨ ${feeAmountPKR.toFixed(2)}`}
                                 </span>
                               </div>
 
-                              <div className="bg-emerald-50/50 p-2 rounded-lg border border-emerald-200/60">
-                                <span className="text-[9px] text-emerald-700 font-bold block uppercase">Net Credit</span>
-                                <span className="font-bold text-emerald-700 font-mono text-xs block mt-0.5">
+                              <div className="bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-500/30">
+                                <span className="text-[9.5px] text-emerald-400 font-bold block uppercase font-mono">Net Credited</span>
+                                <span className="font-extrabold text-emerald-400 font-mono text-xs block mt-1">
                                   {formatPrice(netAmountInPKR / (cryptoRate || 278))}
                                 </span>
                               </div>
@@ -901,9 +931,9 @@ export default function CashDeposit({
                         )}
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                          {/* Sender Name */}
-                          <div className="space-y-1">
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                          {/* Sender Account Name */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
                               Sender Account Title
                             </label>
                             <input
@@ -911,40 +941,40 @@ export default function CashDeposit({
                               placeholder="e.g. Muhammad Ali"
                               value={senderName}
                               onChange={(e) => setSenderName(e.target.value)}
-                              className="w-full bg-slate-50 border border-slate-200/80 focus:border-[#00AEEF] focus:ring-2 focus:ring-[#00AEEF]/10 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-bold focus:outline-none transition-all placeholder:text-slate-400"
+                              className="w-full bg-slate-950 border border-slate-800 focus:border-[#00AEEF] focus:ring-2 focus:ring-[#00AEEF]/20 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold focus:outline-none transition-all placeholder:text-slate-600"
                               required
                             />
                           </div>
 
                           {/* Sender Phone */}
-                          <div className="space-y-1">
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                              Sender Phone No (Optional)
+                          <div className="space-y-1.5">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                              Sender Phone No. (Optional)
                             </label>
                             <input
                               type="tel"
                               placeholder="e.g. 03001234567"
                               value={senderPhone}
                               onChange={(e) => setSenderPhone(e.target.value)}
-                              className="w-full bg-slate-50 border border-slate-200/80 focus:border-[#00AEEF] focus:ring-2 focus:ring-[#00AEEF]/10 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-mono focus:outline-none transition-all placeholder:text-slate-400"
+                              className="w-full bg-slate-950 border border-slate-800 focus:border-[#00AEEF] focus:ring-2 focus:ring-[#00AEEF]/20 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none transition-all placeholder:text-slate-600"
                             />
                           </div>
                         </div>
 
                         {/* Payment Proof Drag & Drop */}
-                        <div className="space-y-1">
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                            Payment Receipt Screenshot
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                            Payment Receipt Screenshot (Recommended)
                           </label>
                           
                           <div 
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
                             onDrop={handleDrop}
-                            className={`relative border-2 border-dashed rounded-xl p-4 transition-colors duration-200 flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
+                            className={`relative border-2 border-dashed rounded-2xl p-4 transition-colors duration-200 flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
                               isDragging 
-                                ? "border-[#00AEEF] bg-blue-50/50" 
-                                : "border-slate-200 hover:border-slate-300 bg-slate-50/50"
+                                ? "border-[#00AEEF] bg-[#00AEEF]/10" 
+                                : "border-slate-800 hover:border-slate-700 bg-slate-950/60"
                             }`}
                           >
                             <input
@@ -960,27 +990,27 @@ export default function CashDeposit({
                                 <img 
                                   src={proofImage} 
                                   alt="Proof preview" 
-                                  className="h-12 w-12 object-cover rounded-lg border border-slate-200 shadow-xs" 
+                                  className="h-12 w-12 object-cover rounded-xl border border-slate-700 shadow-sm" 
                                 />
                                 <div className="text-left">
-                                  <p className="text-xs text-slate-800 font-bold">Screenshot Attached</p>
-                                  <p className="text-[10px] text-emerald-600 font-mono">Ready for verification</p>
+                                  <p className="text-xs text-white font-bold">Screenshot Attached</p>
+                                  <p className="text-[10px] text-emerald-400 font-mono">Ready for verification</p>
                                   <button 
                                     type="button" 
                                     onClick={() => setProofImage("")}
-                                    className="text-[10px] text-rose-500 hover:text-rose-700 font-bold underline mt-0.5 cursor-pointer"
+                                    className="text-[10px] text-rose-400 hover:text-rose-300 font-bold underline mt-0.5 cursor-pointer"
                                   >
-                                    Remove File
+                                    Remove Attachment
                                   </button>
                                 </div>
                               </div>
                             ) : (
                               <div className="text-center py-1">
-                                <UploadCloud className="h-6 w-6 text-slate-400 mx-auto mb-1" />
-                                <p className="text-xs text-slate-700 font-semibold">
-                                  Drag &amp; Drop receipt or <span className="text-[#00AEEF] underline">Browse</span>
+                                <UploadCloud className="h-6 w-6 text-slate-500 mx-auto mb-1" />
+                                <p className="text-xs text-slate-300 font-semibold">
+                                  Drag &amp; drop receipt or <span className="text-[#00AEEF] underline">browse file</span>
                                 </p>
-                                <p className="text-[9px] text-slate-400 font-mono mt-0.5">
+                                <p className="text-[9.5px] text-slate-500 font-mono mt-0.5">
                                   Supports JPG, PNG (Max 2MB)
                                 </p>
                               </div>
@@ -988,10 +1018,10 @@ export default function CashDeposit({
                           </div>
                         </div>
 
-                        {/* Error Message */}
+                        {/* Error Notification */}
                         {error && (
-                          <div className="text-xs text-rose-600 font-semibold bg-rose-50 p-3 rounded-xl border border-rose-200 flex items-center gap-2">
-                            <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                          <div className="text-xs text-rose-300 font-semibold bg-rose-950/50 p-3.5 rounded-xl border border-rose-500/40 flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
                             <span>{error}</span>
                           </div>
                         )}
@@ -1000,11 +1030,17 @@ export default function CashDeposit({
                         <button
                           type="submit"
                           disabled={isVerifying}
-                          className="w-full bg-[#00AEEF] hover:bg-[#0096ce] text-slate-950 font-black py-3 rounded-xl text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 shadow-sm hover:shadow active:scale-98 disabled:opacity-50"
+                          className="w-full bg-[#00AEEF] hover:bg-[#0096ce] text-slate-950 font-black py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-98 disabled:opacity-50 mt-2"
                         >
-                          <span>{isVerifying ? "Verifying Transaction..." : "Submit Deposit Verification"}</span>
-                          <ArrowRight className="h-4 w-4" />
+                          <Zap className="h-4 w-4 fill-slate-950" />
+                          <span>{isVerifying ? "Verifying Transaction..." : "Verify & Credit Deposit"}</span>
+                          <ArrowRight className="h-4 w-4 stroke-[3]" />
                         </button>
+
+                        <div className="text-center text-[10px] font-mono text-slate-500 flex items-center justify-center gap-1.5 mt-2">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Bank-grade 256-bit encryption • Instant automated balance issuance</span>
+                        </div>
                       </form>
                     </div>
                   </div>
@@ -1266,10 +1302,15 @@ export default function CashDeposit({
                 <button
                   type="button"
                   onClick={() => handleCopy(currentSubAccount.number || currentInstruction.accountNumber, "qr_modal_acc")}
-                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shrink-0"
+                  className={`w-8 h-8 rounded-lg transition-all duration-150 flex items-center justify-center shrink-0 border cursor-pointer ${
+                    copiedField === "qr_modal_acc"
+                      ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                      : "bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700 active:scale-95"
+                  }`}
+                  title="Copy Account Number"
+                  aria-label="Copy Account Number"
                 >
-                  {copiedField === "qr_modal_acc" ? <Check className="h-3 w-3 text-emerald-200" /> : <Copy className="h-3 w-3" />}
-                  <span>Copy</span>
+                  {copiedField === "qr_modal_acc" ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                 </button>
               </div>
 

@@ -210,7 +210,7 @@ By accessing, registering, or executing transactions on ZeroX Network, you ackno
 
 • Prohibited Uses: You agree not to use virtual phone numbers or platform services for unlawful schemes, financial fraud, unauthorized spam broadcasting, impersonation, harassment, or attempts to breach third-party security systems.
 • Immediate Account Sanctions: Accounts identified engaging in fraudulent payment chargebacks, unauthorized exploitation of platform APIs, or malicious bot activities will be immediately terminated with forfeiture of existing wallet balances.
-• Platform Modifications: ZeroX Network reserves the right to update service catalogs, provider routes, and policy clauses to reflect technological updates and legal requirements.`
+• Platform Modifications: ZeroX Network reserves the right to update service catalogs, network routes, and policy clauses to reflect technological updates and legal requirements.`
     },
     {
       id: "sec-11",

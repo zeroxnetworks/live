@@ -4777,6 +4777,19 @@ app.post("/api/email/:action", async (req, res) => {
     }
   });
 
+  // SMM Incident Resolution & Diagnostic Email Report Endpoint
+  app.post("/api/smm/send-report", async (req, res) => {
+    try {
+      const { targetEmail = "pandapals.manager@gmail.com" } = req.body || {};
+      const { sendSmmIncidentResolutionReport } = await import("./server/smmSyncEngine");
+      const result = await sendSmmIncidentResolutionReport(targetEmail);
+      return res.json(result);
+    } catch (err: any) {
+      console.error("[SMM Send Diagnostic Report Error]:", err);
+      return res.status(500).json({ error: err.message || "Failed to send diagnostic report" });
+    }
+  });
+
   // 2. SMM Secure Buy Route (With Non-Cancellable Flag & Fail-Safe Auto-Refund)
   app.post("/api/smm/secure-buy", async (req, res) => {
     try {

@@ -3042,80 +3042,156 @@ Code: ${newSmsText}` });
               <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-8">
                 {/* Curated Catalog Selection Section */}
                 <div id="catalog-section" className="space-y-6">
-                  {/* Sleek Black Section Header with 1 Title Line & Auto-Minimize Option */}
-                  <div className="bg-slate-900 border border-slate-800 text-white rounded-2xl p-3.5 sm:p-4 shadow-md transition-all duration-300">
-                    <div className="flex items-center justify-between gap-3">
-                      {/* Single Title Line: Title + Instant Badge + How to Order button */}
-                      <div className="flex items-center gap-2.5 flex-wrap min-w-0">
-                        <div className="p-2 rounded-xl bg-blue-500/15 text-[#00AEEF] border border-blue-500/20 shrink-0">
-                          <Smartphone className="w-4 h-4 sm:w-5 sm:h-5" />
-                        </div>
-                        <h2 className="text-sm sm:text-base font-black text-white tracking-tight truncate font-sans">
-                          Purchase Virtual Number
-                        </h2>
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#00AEEF]/15 text-[#00AEEF] border border-[#00AEEF]/30 uppercase tracking-wider shrink-0">
-                          <Zap className="w-3 h-3 fill-[#00AEEF]" />
-                          Instant Allocation
-                        </span>
+                  {/* Sleek Modern Header with 1-Line & Responsive Flow + Collapsible Process Guide */}
+                  <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-900/98 to-slate-950 border border-slate-800/80 text-white rounded-2xl p-3.5 sm:p-4 md:p-5 shadow-xl transition-all duration-300">
+                    {/* Ambient Glows */}
+                    <div className="absolute -top-12 -left-12 w-48 h-48 bg-[#00AEEF]/10 rounded-full blur-3xl pointer-events-none" />
+                    <div className="absolute -bottom-10 -right-10 w-44 h-44 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
-                        {/* Tutorial Trigger Button & First-Time User Hint */}
-                        <div className="relative inline-flex items-center">
-                          <button
-                            id="how-to-order-btn"
-                            type="button"
-                            onClick={handleStartOrderTutorial}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-blue-500/15 hover:bg-blue-500/25 text-[#00AEEF] hover:text-white border border-blue-500/30 hover:border-blue-400 transition-all cursor-pointer shadow-sm group active:scale-95"
-                            title="Automatic Demo: How to Order a Virtual Number"
-                          >
-                            <Play className="w-2.5 h-2.5 fill-current text-[#00AEEF] group-hover:scale-110 transition-transform" />
-                            <span>How to Order</span>
-                          </button>
+                    <div className="relative z-10">
+                      {/* Responsive Top Bar */}
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4">
+                        {/* Left Group: Icon + Title + Badges & CTA */}
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-3.5 min-w-0">
+                          {/* Title & Icon */}
+                          <div className="flex items-center justify-between sm:justify-start gap-2.5 min-w-0">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#00AEEF]/20 to-blue-600/20 text-[#00AEEF] border border-[#00AEEF]/30 shadow-[0_0_12px_rgba(0,174,239,0.2)] shrink-0 relative">
+                                <Smartphone className="w-4 h-4 sm:w-5 sm:h-5 text-[#00AEEF]" />
+                                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+                              </div>
+                              <div className="min-w-0">
+                                <h2 className="text-base sm:text-lg font-black text-white tracking-tight leading-tight truncate">
+                                  Purchase Virtual Number
+                                </h2>
+                                <p className="text-[10.5px] sm:text-[11px] text-slate-400 font-medium leading-none mt-0.5 flex items-center gap-1.5">
+                                  <span>150+ Global Regions</span>
+                                  <span className="text-slate-600">•</span>
+                                  <span className="text-emerald-400 font-semibold">Live Stock</span>
+                                </p>
+                              </div>
+                            </div>
 
-                          {/* Subtle First-Time User Hint (Shows only once) */}
-                          {showOrderTutorialHint && (
-                            <div className="absolute top-full left-0 mt-1.5 z-30 bg-gradient-to-r from-blue-600 to-[#00AEEF] text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shadow-xl border border-blue-400/40 flex items-center gap-1.5 whitespace-nowrap animate-bounce">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                            {/* Mobile-only Guide Toggle Button on top right */}
+                            <button
+                              type="button"
+                              onClick={() => setIsCatalogGuideMinimized(!isCatalogGuideMinimized)}
+                              className="sm:hidden flex items-center justify-center p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 text-slate-300 hover:text-white border border-slate-700/70 active:scale-95 transition-all text-xs font-semibold shrink-0 cursor-pointer"
+                              title={isCatalogGuideMinimized ? "Expand process guide" : "Minimize process guide"}
+                              aria-label="Toggle Guide"
+                            >
+                              <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isCatalogGuideMinimized ? "" : "rotate-180 text-[#00AEEF]"}`} />
+                            </button>
+                          </div>
+
+                          {/* Badges & Actions Row (Stacked cleanly on mobile, inline on tablet/desktop) */}
+                          <div className="flex items-center gap-2 pt-2 sm:pt-0 border-t border-slate-800/60 sm:border-0 flex-wrap sm:flex-nowrap">
+                            {/* Instant Allocation Live Badge */}
+                            <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-[#00AEEF]/10 text-[#00AEEF] border border-[#00AEEF]/30 shadow-[0_0_12px_rgba(0,174,239,0.15)] uppercase tracking-wider select-none shrink-0">
+                              <Zap className="w-3 h-3 fill-[#00AEEF] text-[#00AEEF] animate-pulse shrink-0" />
+                              <span className="whitespace-nowrap">Instant Allocation</span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping ml-0.5 hidden xs:inline-block" />
+                            </div>
+
+                            {/* Tutorial Trigger Button & First-Time User Hint */}
+                            <div className="relative inline-flex items-center shrink-0">
                               <button
+                                id="how-to-order-btn"
                                 type="button"
                                 onClick={handleStartOrderTutorial}
-                                className="cursor-pointer hover:underline text-white font-bold"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-blue-600/25 via-[#00AEEF]/20 to-blue-500/25 hover:from-blue-600/40 hover:to-[#00AEEF]/40 text-white border border-[#00AEEF]/40 hover:border-[#00AEEF] shadow-[0_0_12px_rgba(0,174,239,0.2)] hover:shadow-[0_0_18px_rgba(0,174,239,0.35)] transition-all cursor-pointer active:scale-95 group shrink-0"
+                                title="Automatic Demo: How to Order a Virtual Number"
                               >
-                                Watch Virtual Number Demo ▶
+                                <div className="w-4 h-4 rounded-full bg-[#00AEEF]/25 group-hover:bg-[#00AEEF] text-[#00AEEF] group-hover:text-slate-950 flex items-center justify-center transition-colors">
+                                  <Play className="w-2.5 h-2.5 fill-current ml-0.5 transition-transform group-hover:scale-110" />
+                                </div>
+                                <span className="whitespace-nowrap font-bold tracking-tight">How to Order</span>
                               </button>
-                              <button
-                                type="button"
-                                onClick={handleDismissOrderTutorialHint}
-                                className="p-0.5 hover:bg-black/20 rounded text-blue-100 hover:text-white ml-0.5 cursor-pointer"
-                                title="Dismiss hint"
-                              >
-                                <X className="w-2.5 h-2.5" />
-                              </button>
+
+                              {/* Subtle First-Time User Hint (Shows only once) */}
+                              {showOrderTutorialHint && (
+                                <div className="absolute top-full left-0 mt-2 z-30 bg-gradient-to-r from-blue-600 via-[#00AEEF] to-cyan-500 text-white text-[10.5px] font-bold px-3 py-1.5 rounded-xl shadow-2xl border border-blue-300/50 flex items-center gap-2 whitespace-nowrap animate-bounce">
+                                  <span className="w-2 h-2 rounded-full bg-white animate-ping shrink-0" />
+                                  <button
+                                    type="button"
+                                    onClick={handleStartOrderTutorial}
+                                    className="cursor-pointer hover:underline text-white font-bold"
+                                  >
+                                    Watch Virtual Number Demo ▶
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleDismissOrderTutorialHint}
+                                    className="p-1 hover:bg-black/20 rounded-md text-blue-100 hover:text-white cursor-pointer ml-1 transition-colors"
+                                    title="Dismiss hint"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                          )}
+                          </div>
                         </div>
+
+                        {/* Desktop-only Guide Toggle Button on Right */}
+                        <button
+                          type="button"
+                          onClick={() => setIsCatalogGuideMinimized(!isCatalogGuideMinimized)}
+                          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-700/60 transition-all text-xs font-semibold shrink-0 cursor-pointer active:scale-95"
+                          title={isCatalogGuideMinimized ? "Expand process guide" : "Minimize process guide"}
+                        >
+                          <span className="text-[11px] text-slate-300">
+                            {isCatalogGuideMinimized ? "3-Step Guide" : "Hide Guide"}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isCatalogGuideMinimized ? "" : "rotate-180 text-[#00AEEF]"}`} />
+                        </button>
                       </div>
 
-                      {/* Right: Auto-Minimize Toggle Button */}
-                      <button
-                        onClick={() => setIsCatalogGuideMinimized(!isCatalogGuideMinimized)}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-700/60 transition-all text-xs font-semibold shrink-0 cursor-pointer"
-                        title={isCatalogGuideMinimized ? "Expand process guide" : "Minimize process guide"}
-                      >
-                        <span className="hidden sm:inline text-[11px] text-slate-400">
-                          {isCatalogGuideMinimized ? "Guide" : "Minimize"}
-                        </span>
-                        <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isCatalogGuideMinimized ? "" : "rotate-180"}`} />
-                      </button>
+                      {/* Expandable Process Guide & Steps (Collapsible) */}
+                      {!isCatalogGuideMinimized && (
+                        <div className="mt-3.5 pt-3.5 border-t border-slate-800/80">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3">
+                            <div className="bg-slate-800/50 border border-slate-700/60 rounded-xl p-2.5 flex items-start gap-2.5">
+                              <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-500/20 text-[#00AEEF] text-xs font-extrabold shrink-0">
+                                01
+                              </span>
+                              <div>
+                                <h4 className="text-xs font-bold text-white">Select Country</h4>
+                                <p className="text-[10px] text-slate-400">150+ international origins with instant stock</p>
+                              </div>
+                            </div>
+                            <div className="bg-slate-800/50 border border-slate-700/60 rounded-xl p-2.5 flex items-start gap-2.5">
+                              <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-500/20 text-[#00AEEF] text-xs font-extrabold shrink-0">
+                                02
+                              </span>
+                              <div>
+                                <h4 className="text-xs font-bold text-white">Choose Service</h4>
+                                <p className="text-[10px] text-slate-400">WhatsApp, Telegram, OpenAI, Google & 500+ apps</p>
+                              </div>
+                            </div>
+                            <div className="bg-slate-800/50 border border-slate-700/60 rounded-xl p-2.5 flex items-start gap-2.5">
+                              <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-extrabold shrink-0">
+                                03
+                              </span>
+                              <div>
+                                <h4 className="text-xs font-bold text-white">Receive Instant SMS</h4>
+                                <p className="text-[10px] text-slate-400">Real-time OTP live stream with instant copy</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 text-[11px] text-slate-400 bg-slate-800/30 rounded-lg px-3 py-1.5">
+                            <span>Ready to start? Select your country below or run the automated demo.</span>
+                            <button
+                              type="button"
+                              onClick={handleStartOrderTutorial}
+                              className="text-[#00AEEF] hover:text-white font-bold inline-flex items-center gap-1 cursor-pointer hover:underline shrink-0"
+                            >
+                              Launch Demo <Play className="w-2.5 h-2.5 fill-current" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-
-                    {/* Expandable Process Guide & Subtitle (Collapsible) */}
-                    {!isCatalogGuideMinimized && (
-                      <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                        <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                          Complete three simple steps to allocate your instant secure SMS verification line
-                        </p>
-                      </div>
-                    )}
                   </div>
 
                   <CatalogSelector

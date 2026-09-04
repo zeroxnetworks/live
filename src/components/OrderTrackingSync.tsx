@@ -449,7 +449,7 @@ export default function OrderTrackingSync({
                     <td className="py-3.5 px-3 font-mono font-bold text-slate-400 text-[10px]">
                       <div>#{ord.id.toString().slice(-8)}</div>
                       {ord.providerOrderId && (
-                        <div className="text-[8.5px] text-slate-600 font-normal">Provider Ref: #{ord.providerOrderId}</div>
+                        <div className="text-[8.5px] text-slate-600 font-normal">Network Ref: #{ord.providerOrderId}</div>
                       )}
                     </td>
                     <td className="py-3.5 px-3">

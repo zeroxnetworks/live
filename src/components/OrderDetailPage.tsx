@@ -117,7 +117,7 @@ export default function OrderDetailPage({
         setProviderErrorMsg(null);
         setLastSyncTime(new Date());
         if (isManual) {
-          toast.success("Order verified with official provider");
+          toast.success("Order status synchronized");
         }
       } else {
         setProviderSyncStatus("LIVE");
@@ -126,9 +126,9 @@ export default function OrderDetailPage({
         }
       }
     } catch (e: any) {
-      console.warn("Direct provider sync warning:", e);
+      console.warn("Direct sync warning:", e);
       setProviderSyncStatus("ERROR");
-      setProviderErrorMsg(e.message || "Failed to reach provider");
+      setProviderErrorMsg(e.message || "Failed to sync order status");
     } finally {
       if (isManual) setIsSyncing(false);
     }
@@ -353,7 +353,7 @@ export default function OrderDetailPage({
     },
     {
       title: "Automatic Expiry: 100% Refund",
-      desc: "If the provider session expires without receiving an OTP, you receive an automatic 100% full refund with 0% fee.",
+      desc: "If the activation session expires without receiving an OTP, you receive an automatic 100% full refund with 0% fee.",
       badge: "Automatic 100%"
     }
   ];
@@ -418,15 +418,15 @@ export default function OrderDetailPage({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {/* Direct Provider Sync Indicator / Manual Trigger */}
+            {/* Direct Sync Indicator / Manual Trigger */}
             <button
               onClick={() => verifyWithProvider(true)}
               disabled={isSyncing}
               className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition text-xs font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              title="Verify order directly with provider API"
+              title="Sync latest order status"
             >
               <RefreshCw className={`h-3 w-3 text-[#00AEEF] ${isSyncing ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline text-[11px]">Sync Provider</span>
+              <span className="hidden sm:inline text-[11px]">Sync Status</span>
             </button>
 
             <button
@@ -451,12 +451,12 @@ export default function OrderDetailPage({
       {/* MAIN CONTENT CONTAINER */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-5 space-y-4">
 
-        {/* PROVIDER STATUS NOTICE (If connection or sync note) */}
+        {/* STATUS NOTICE (If connection or sync note) */}
         {providerErrorMsg && (
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center justify-between gap-3 text-xs text-amber-300">
             <div className="flex items-center gap-2 min-w-0">
               <AlertCircle className="h-4 w-4 text-amber-400 shrink-0" />
-              <span className="truncate">Provider status: {providerErrorMsg}. Retrying synchronization automatically...</span>
+              <span className="truncate">Sync status: {providerErrorMsg}. Retrying synchronization automatically...</span>
             </div>
             <button
               onClick={() => verifyWithProvider(true)}
@@ -482,10 +482,6 @@ export default function OrderDetailPage({
                 </span>
                 <span className="text-[10px] font-mono text-slate-500 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
                   {currentOrder.operator.toUpperCase()}
-                </span>
-                <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Provider Synchronized
                 </span>
               </div>
 

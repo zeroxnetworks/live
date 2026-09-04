@@ -805,23 +805,36 @@ Official Portal: https://zeroxnetwork.com
               </div>
 
               {/* Purchase Virtual Number Banner Section */}
-              <div className="bg-slate-900 border border-slate-800 text-white rounded-2xl p-3.5 sm:p-4 shadow-md transition-all">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 flex-wrap min-w-0">
-                    <div className="p-2 rounded-xl bg-blue-500/15 text-[#00AEEF] border border-blue-500/20 shrink-0">
-                      <Smartphone className="w-4 h-4 sm:w-5 sm:h-5" />
+              <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-900/98 to-slate-950 border border-slate-800/80 text-white rounded-2xl p-3.5 sm:p-4 md:p-5 shadow-xl transition-all">
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-3.5 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#00AEEF]/20 to-blue-600/20 text-[#00AEEF] border border-[#00AEEF]/30 shadow-[0_0_12px_rgba(0,174,239,0.2)] shrink-0 relative">
+                        <Smartphone className="w-4 h-4 sm:w-5 sm:h-5 text-[#00AEEF]" />
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="text-base sm:text-lg font-black text-white tracking-tight leading-tight truncate">
+                          Purchase Virtual Number
+                        </h2>
+                        <p className="text-[10.5px] sm:text-[11px] text-slate-400 font-medium leading-none mt-0.5 flex items-center gap-1.5">
+                          <span>150+ Global Regions</span>
+                          <span className="text-slate-600">•</span>
+                          <span className="text-emerald-400 font-semibold">Live Stock</span>
+                        </p>
+                      </div>
                     </div>
-                    <h2 className="text-sm sm:text-base font-black text-white tracking-tight truncate">
-                      Purchase Virtual Number
-                    </h2>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#00AEEF]/15 text-[#00AEEF] border border-[#00AEEF]/30 uppercase tracking-wider shrink-0">
-                      <Zap className="w-3 h-3 fill-[#00AEEF]" />
-                      Instant Allocation
-                    </span>
 
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-blue-500/20 text-[#00AEEF] border border-blue-400/40">
-                      <Play className="w-2.5 h-2.5 fill-current text-[#00AEEF]" />
-                      <span>Demo Mode Active</span>
+                    <div className="flex items-center gap-2 pt-2 sm:pt-0 border-t border-slate-800/60 sm:border-0 flex-wrap sm:flex-nowrap">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-[#00AEEF]/10 text-[#00AEEF] border border-[#00AEEF]/30 shadow-[0_0_12px_rgba(0,174,239,0.15)] uppercase tracking-wider select-none shrink-0">
+                        <Zap className="w-3 h-3 fill-[#00AEEF] text-[#00AEEF] animate-pulse shrink-0" />
+                        <span className="whitespace-nowrap">Instant Allocation</span>
+                      </div>
+
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-500/20 text-[#00AEEF] border border-blue-400/40 shrink-0 shadow-sm">
+                        <Play className="w-2.5 h-2.5 fill-current text-[#00AEEF]" />
+                        <span className="whitespace-nowrap">Interactive Demo Active</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1343,7 +1356,7 @@ Official Portal: https://zeroxnetwork.com
                 <div className="flex items-center gap-2">
                   <div className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold flex items-center gap-1.5">
                     <RefreshCw className="h-3 w-3 text-[#00AEEF] animate-spin" />
-                    <span className="hidden sm:inline text-[11px]">Sync Provider</span>
+                    <span className="hidden sm:inline text-[11px]">Sync Status</span>
                   </div>
                   <div className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold flex items-center gap-1.5">
                     <FileText className="h-3.5 w-3.5 text-[#00AEEF]" />
@@ -1372,10 +1385,6 @@ Official Portal: https://zeroxnetwork.com
                       </span>
                       <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
                         O2 UK
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        Provider Synchronized
                       </span>
                     </div>
 
