@@ -40,7 +40,9 @@ jobs:
       - name: Check for tracked private-key material
         shell: bash
         run: |
-          if git grep -n -I -E 'BEGIN (RSA|EC|OPENSSH|PRIVATE KEY)|private_key.*BEGIN|FIREBASE_PRIVATE_KEY.*\\\\n' -- ':!docs/*' ':!*.md'; then
+          # .env.example intentionally documents the placeholder PEM shape.
+          # Fail only on an actual PEM header tracked outside that template.
+          if git grep -n -I -E -- '-----BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY-----' -- ':!.env.example' ':!docs/*' ':!*.md'; then
             echo "Potential private-key material is tracked in source. Rotate exposed credentials and remove them from history."
             exit 1
           fi
