@@ -1,68 +1,78 @@
 import { Request, Response, NextFunction } from "express";
-import { adminDb } from "./firebaseAdmin";
-
-const ADMIN_KEYS = new Set([
-  process.env.ADMIN_KEY || "zerox2026",
-  "zerox2026",
-  "admin123"
-]);
+import { adminDb, adminAuth } from "./firebaseAdmin";
 
 export const ROOT_ADMIN_EMAIL = "zeroxnetworks@gmail.com";
+const NORMALIZED_ROOT_ADMIN_EMAIL = ROOT_ADMIN_EMAIL.toLowerCase();
+
+export async function isAuthorizedAdminToken(idToken: string): Promise<{ authorized: boolean; uid?: string; email?: string; role?: string }> {
+  try {
+    const decoded = await adminAuth.verifyIdToken(idToken, true);
+    const uid = decoded.uid;
+    const email = (decoded.email || "").toLowerCase().trim();
+    const claimRole = String((decoded as any).role || (decoded as any).adminRole || "").trim();
+
+    if (email === NORMALIZED_ROOT_ADMIN_EMAIL) {
+      return { authorized: true, uid, email, role: "Supreme Super Admin" };
+    }
+
+    const adminClaim = (decoded as any).admin === true || (decoded as any).isAdmin === true;
+    const claimRoleUpper = claimRole.toUpperCase();
+    if (adminClaim || ["ADMIN", "SUPER ADMIN", "SUPREME_SUPER_ADMIN", "SUPER_ADMIN"].includes(claimRoleUpper)) {
+      return { authorized: true, uid, email, role: claimRole || "Admin" };
+    }
+
+    const adminDoc = await adminDb.collection("admins").doc(uid).get();
+    if (adminDoc.exists) {
+      const data = adminDoc.data() || {};
+      const status = String(data.status || "ACTIVE").toUpperCase();
+      if (status === "ACTIVE") {
+        return { authorized: true, uid, email: email || String(data.email || "").toLowerCase().trim(), role: String(data.role || claimRole || "Admin") };
+      }
+    }
+
+    const userDoc = await adminDb.collection("users").doc(uid).get();
+    if (userDoc.exists) {
+      const data = userDoc.data() || {};
+      const status = String(data.status || "ACTIVE").toUpperCase();
+      const role = String(data.role || "").trim();
+      const roleUpper = role.toUpperCase();
+      if (status !== "BANNED" && ["ADMIN", "SUPER ADMIN", "SUPREME_SUPER_ADMIN", "SUPER_ADMIN"].includes(roleUpper)) {
+        return { authorized: true, uid, email: email || String(data.email || "").toLowerCase().trim(), role };
+      }
+    }
+
+    return { authorized: false };
+  } catch {
+    return { authorized: false };
+  }
+}
 
 export function isSupremeSuperAdmin(email?: string, role?: string): boolean {
-  if (!email && !role) return false;
   const cleanEmail = (email || "").toLowerCase().trim();
   const cleanRole = (role || "").toUpperCase().trim();
-  return cleanEmail === ROOT_ADMIN_EMAIL || cleanRole === "SUPREME_SUPER_ADMIN";
+  return cleanEmail === NORMALIZED_ROOT_ADMIN_EMAIL || cleanRole === "SUPREME_SUPER_ADMIN";
 }
 
 export async function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
   try {
-    // 1. Direct Root Admin Check via Headers
-    const adminEmailHeader = (req.headers["x-admin-email"] as string || req.headers["x-user-email"] as string || "").toLowerCase().trim();
-    if (adminEmailHeader === ROOT_ADMIN_EMAIL) {
-      return next();
+    const configuredAdminKey = process.env.ADMIN_KEY?.trim();
+    const suppliedAdminKey = typeof req.headers["x-admin-key"] === "string" ? req.headers["x-admin-key"].trim() : "";
+    if (configuredAdminKey && suppliedAdminKey && suppliedAdminKey === configuredAdminKey) return next();
+
+    const authHeader = req.headers.authorization || "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ success: false, error: "Unauthorized: Firebase admin authentication required." });
     }
 
-    // 2. Check header key
-    const headerKey = req.headers["x-admin-key"] as string;
-    if (headerKey && ADMIN_KEYS.has(headerKey)) {
-      return next();
-    }
+    const idToken = authHeader.slice("Bearer ".length).trim();
+    if (!idToken) return res.status(401).json({ success: false, error: "Unauthorized: missing Firebase ID token." });
 
-    // 3. Check body or query admin email
-    const requestEmail = (req.body?.adminEmail || req.body?.userEmail || req.query?.adminEmail || "").toString().toLowerCase().trim();
-    if (requestEmail === ROOT_ADMIN_EMAIL) {
-      return next();
-    }
+    const result = await isAuthorizedAdminToken(idToken);
+    if (!result.authorized) return res.status(403).json({ success: false, error: "Forbidden: administrative privileges required." });
 
-    // 4. Check Bearer Auth / Firebase ID Token if provided
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const idToken = authHeader.split("Bearer ")[1];
-      if (idToken) {
-        const userId = req.headers["x-user-id"] as string || req.body?.adminUserId || req.query?.adminUserId;
-        if (userId) {
-          const adminDoc = await adminDb.collection("admins").doc(userId).get();
-          if (adminDoc.exists) {
-            return next();
-          }
-          const userDoc = await adminDb.collection("users").doc(userId).get();
-          if (userDoc.exists) {
-            const uData = userDoc.data() || {};
-            const userEmail = (uData.email || "").toLowerCase().trim();
-            const userRole = (uData.role || "").toString().toUpperCase().trim();
-
-            if (userEmail === ROOT_ADMIN_EMAIL || userRole === "SUPREME_SUPER_ADMIN" || userRole === "SUPER ADMIN" || userRole === "ADMIN") {
-              return next();
-            }
-          }
-        }
-      }
-    }
-
-    return res.status(401).json({ success: false, error: "Unauthorized: Admin privileges required." });
-  } catch (err: any) {
-    return res.status(500).json({ success: false, error: "Authentication verification failed: " + err.message });
+    (req as any).adminAuth = { uid: result.uid, email: result.email, role: result.role };
+    return next();
+  } catch {
+    return res.status(401).json({ success: false, error: "Authentication verification failed." });
   }
 }
