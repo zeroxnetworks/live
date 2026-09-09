@@ -57,13 +57,15 @@ const getEnv = (key: string, fallback = ""): string => {
   return fallback;
 };
 
+// Zerox Network production Firebase configuration.
+// These values are the public Firebase Web SDK configuration for project: zerox-network.
 const firebaseConfig = {
-  apiKey: getEnv("VITE_FIREBASE_API_KEY", "AIzaSyBGetpMpLcDTtmfq8N3VQCW0FVGeoYjSw4"),
-  authDomain: getEnv("VITE_FIREBASE_AUTH_DOMAIN", "charismatic-analog-ft3g1.firebaseapp.com"),
-  projectId: getEnv("VITE_FIREBASE_PROJECT_ID", "charismatic-analog-ft3g1"),
-  storageBucket: getEnv("VITE_FIREBASE_STORAGE_BUCKET", "charismatic-analog-ft3g1.firebasestorage.app"),
-  messagingSenderId: getEnv("VITE_FIREBASE_MESSAGING_SENDER_ID", "855390875983"),
-  appId: getEnv("VITE_FIREBASE_APP_ID", "1:855390875983:web:99a33159cae58fb6b7553a")
+  apiKey: getEnv("VITE_FIREBASE_API_KEY", "AIzaSyAjmrDtc-EPctFVUO2piUj1NF1jSfqv49Q"),
+  authDomain: getEnv("VITE_FIREBASE_AUTH_DOMAIN", "zerox-network.firebaseapp.com"),
+  projectId: getEnv("VITE_FIREBASE_PROJECT_ID", "zerox-network"),
+  storageBucket: getEnv("VITE_FIREBASE_STORAGE_BUCKET", "zerox-network.firebasestorage.app"),
+  messagingSenderId: getEnv("VITE_FIREBASE_MESSAGING_SENDER_ID", "778851904164"),
+  appId: getEnv("VITE_FIREBASE_APP_ID", "1:778851904164:web:01e85ae00f1b26fecd1431")
 };
 
 const app = initializeApp(firebaseConfig);
@@ -83,13 +85,13 @@ const firestoreDbId = getEnv("VITE_FIREBASE_FIRESTORE_DATABASE_ID", "ai-studio-z
 export const db = (firestoreDbId && firestoreDbId !== "(default)")
   ? initializeFirestore(app, {
       experimentalForceLongPolling: true,
-      localCache: isLocalStorageAvailable 
+      localCache: isLocalStorageAvailable
         ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
         : memoryLocalCache()
     }, firestoreDbId)
   : initializeFirestore(app, {
       experimentalForceLongPolling: true,
-      localCache: isLocalStorageAvailable 
+      localCache: isLocalStorageAvailable
         ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
         : memoryLocalCache()
     });
@@ -100,6 +102,3 @@ const authPersistence = isLocalStorageAvailable ? browserLocalPersistence : inMe
 setPersistence(auth, authPersistence).catch((err) => {
   console.warn("Firebase auth persistence configuration warning:", err);
 });
-
-
-
