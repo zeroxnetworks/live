@@ -6,8 +6,13 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isRootAdmin() {
+      return signedIn() && request.auth.token.email == 'zeroxnetworks@gmail.com';
+    }
+
     function isAdmin() {
       return signedIn() && (
+        isRootAdmin() ||
         request.auth.token.admin == true ||
         request.auth.token.isAdmin == true ||
         request.auth.token.role in ['admin', 'ADMIN', 'SUPER_ADMIN', 'SUPER ADMIN', 'SUPREME_SUPER_ADMIN'] ||
@@ -20,10 +25,10 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAdmin() || (signedIn() && request.auth.uid == userId);
       allow create: if signedIn() && request.auth.uid == userId
-        && request.resource.data.uid == request.auth.uid;
+        && (!('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid);
       allow update: if isAdmin() || (
         signedIn() && request.auth.uid == userId
-        && request.resource.data.uid == resource.data.uid
+        && (!('uid' in resource.data) || request.resource.data.uid == resource.data.uid)
         && request.resource.data.balance == resource.data.balance
         && request.resource.data.role == resource.data.role
         && request.resource.data.status == resource.data.status
